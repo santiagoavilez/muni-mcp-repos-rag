@@ -22,7 +22,7 @@ Elegí según para qué venís:
 | **Alguien que quiere entender qué es esto y por qué sirve** — sin saber nada de IA | [`docs/CONCEPTOS.md`](docs/CONCEPTOS.md) |
 | **Quien lo va a instalar** en su máquina | [`docs/INSTALACION.md`](docs/INSTALACION.md) |
 | **Quien lo va a usar** y quiere saber qué preguntarle | [`docs/COMO_FUNCIONA.md`](docs/COMO_FUNCIONA.md) |
-| **Quien va a tocar el código** | [`CLAUDE.md`](CLAUDE.md) y después [`ROADMAP.md`](ROADMAP.md) |
+| **Quien va a tocar el código** | [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md), después [`CLAUDE.md`](CLAUDE.md) y [`ROADMAP.md`](ROADMAP.md) |
 
 ---
 
@@ -49,6 +49,12 @@ Elegí según para qué venís:
   descargas.
 
 ### Para desarrollar
+
+- **[`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)** — Cómo está construido el
+  servidor **por dentro**, con diagramas: el mapa de módulos y quién depende de
+  quién, la secuencia de arranque, el pipeline de indexado completo, el caché de
+  embeddings, la búsqueda híbrida paso a paso, el modelo de datos y el manejo de
+  errores. Es lo primero que hay que leer antes de tocar el código.
 
 - **[`CLAUDE.md`](CLAUDE.md)** — La referencia técnica: stack y por qué se eligió
   cada pieza, estructura de carpetas, comandos, configuración (`repos.json` y

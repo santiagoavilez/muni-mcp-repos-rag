@@ -265,6 +265,10 @@ refutaron.
 El índice navegable de toda la documentación está en
 [`README.md`](README.md).
 
+- [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — cómo está construido el server
+  por dentro, con diagramas: módulos y dependencias, secuencia de arranque,
+  pipeline de indexado, caché de embeddings, búsqueda híbrida, modelo de datos y
+  manejo de errores. Léelo antes de tocar el código.
 - [`ROADMAP.md`](ROADMAP.md) — qué entra en v1, v2 y v3.
 - [`docs/CONCEPTOS.md`](docs/CONCEPTOS.md) — qué es RAG, embeddings, MCP y por qué
   esta integración vale la pena. Para lectores no técnicos.
