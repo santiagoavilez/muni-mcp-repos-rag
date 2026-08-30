@@ -285,6 +285,25 @@ test('search_project_docs on an unindexed branch says which branches ARE indexed
   await harness.close();
 });
 
+test('search_project_docs on an unindexed branch without a repo lists indexed branches, not "index is empty"', async () => {
+  const harness = await connect();
+  await call(harness.client, 'refresh_index', { repo: 'turnos' });
+
+  // No `repo`: a naive check of totalChunks({ branch }) alone would see zero
+  // matches and blame an empty index, sending the agent to refresh_index for
+  // nothing — the index is populated, just not under this branch name.
+  const outcome = await call(harness.client, 'search_project_docs', {
+    query: 'como se autentican los vecinos',
+    branch: 'no-existe'
+  });
+
+  assert.equal(outcome.isError, true);
+  assert.match(outcome.text, /Branch "no-existe" is not indexed in any repo/);
+  assert.match(outcome.text, /Indexed branches: dev, main/);
+
+  await harness.close();
+});
+
 test('get_file_content reads a specific branch when asked', async () => {
   const harness = await connect();
 

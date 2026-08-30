@@ -130,6 +130,22 @@ function describeEmptyScope(
   branch: string | undefined
 ): string {
   if (repo === undefined) {
+    const allBranches = [...new Set(context.store.stats().map(entry => entry.branch))];
+
+    // Nothing indexed anywhere is a real "run refresh_index"; a `branch` that
+    // simply isn't among the ones that DO exist is a different mistake with a
+    // different fix, so it gets the same branch-listing treatment as the
+    // single-repo case below instead of the misleading "index is empty".
+    if (allBranches.length === 0) {
+      return 'The documentation index is empty. Run refresh_index first.';
+    }
+    if (branch !== undefined) {
+      return (
+        `Branch "${branch}" is not indexed in any repo. Indexed branches: ` +
+        `${allBranches.join(', ')}. Retry without the branch argument, or narrow to a repo ` +
+        'that has that branch and run refresh_index for it.'
+      );
+    }
     return 'The documentation index is empty. Run refresh_index first.';
   }
 

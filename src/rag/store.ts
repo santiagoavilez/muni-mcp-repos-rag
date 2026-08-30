@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
 import { fromProjectRoot } from '../core/paths.js';
@@ -88,9 +88,50 @@ export class VectorStore {
     const resolved = fromProjectRoot(dbPath);
     mkdirSync(dirname(resolved), { recursive: true });
 
-    this.db = new Database(resolved);
-    this.db.pragma('journal_mode = WAL');
+    this.db = VectorStore.open(resolved);
     this.migrate();
+  }
+
+  /**
+   * A file that is not a valid SQLite database (truncated copy, disk full
+   * mid-write, an old build's leftover) must not take the whole server down:
+   * the index is a derived cache per `migrate()` above, so the same policy
+   * applies — move the unreadable file aside and start a fresh one instead of
+   * crashing on every future start. better-sqlite3 opens the file handle
+   * lazily, so the error only surfaces on the first real statement, not on
+   * `new Database(...)`.
+   */
+  private static open(resolved: string): Database.Database {
+    try {
+      return VectorStore.openFresh(resolved);
+    } catch (error) {
+      if (!isUnreadableDatabaseError(error)) throw error;
+
+      const quarantined = `${resolved}.corrupt-${Date.now()}`;
+      console.error(
+        `[store] ${resolved} is not a valid SQLite database (${error.code}); ` +
+          `moving it to ${quarantined} and starting a fresh index. ` +
+          'Run refresh_index (or `pnpm reindex`) to rebuild it.'
+      );
+      for (const suffix of ['', '-wal', '-shm']) {
+        if (existsSync(resolved + suffix)) renameSync(resolved + suffix, quarantined + suffix);
+      }
+      return VectorStore.openFresh(resolved);
+    }
+  }
+
+  private static openFresh(resolved: string): Database.Database {
+    const db = new Database(resolved);
+    try {
+      db.pragma('journal_mode = WAL');
+    } catch (error) {
+      // On Windows the file handle stays open until closed explicitly, and an
+      // open file cannot be renamed — closing it here is what lets `open()`
+      // above quarantine the unreadable file instead of failing to move it.
+      db.close();
+      throw error;
+    }
+    return db;
   }
 
   private migrate(): void {
@@ -634,6 +675,21 @@ function compareBranches(a: string, b: string): number {
  */
 export function hashContent(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+/**
+ * better-sqlite3 reports an unopenable file through its own `SqliteError`
+ * with a `code`, not a generic Error — SQLITE_NOTADB for a file that is not a
+ * database at all, SQLITE_CORRUPT for one whose structure is damaged. Both
+ * are the file's fault, not a bug worth crash-looping the server over; every
+ * other SqliteError (e.g. a locked file) is left to propagate.
+ */
+function isUnreadableDatabaseError(error: unknown): error is Error & { code: string } {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error.code === 'SQLITE_NOTADB' || error.code === 'SQLITE_CORRUPT')
+  );
 }
 
 /** L2 normalisation, so cosine similarity reduces to a dot product. */

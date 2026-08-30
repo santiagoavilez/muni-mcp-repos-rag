@@ -7,8 +7,8 @@ RAG y (G) interfaz MCP. Cuatro revisiones independientes en paralelo, con cada
 hallazgo severo verificado después contra el código real. Línea base al
 momento de auditar: 83 tests en verde, `typecheck` y `typecheck:test` limpios.
 
-Los hallazgos marcados **[CORREGIDO]** fueron arreglados en esta misma pasada;
-el detalle está al final del documento.
+Los hallazgos marcados **[CORREGIDO]** fueron arreglados en esta pasada o en
+una segunda pasada (2026-08-30); el detalle está al final del documento.
 
 ---
 
@@ -67,8 +67,8 @@ Sin hallazgos.
 | E3 | E | El índice FTS se reconstruye completo (O(corpus total)) una vez por rama escrita más una por prune: un refresh de 20 repos × 7 ramas ≈ 150 rebuilds del corpus entero. Hoy son milisegundos; funciona por accidente del tamaño del corpus. | `src/rag/store.ts:234`, `:313-315` | Un solo rebuild al final de la corrida; mantener el rebuild-en-transacción solo para escrituras aisladas. |
 | F2 | F | Un repo eliminado de `repos.json` nunca se limpia del índice: `runRefresh` itera solo los configurados y `pruneBranches` es por-repo. Sus chunks siguen contestando en `search_project_docs` indefinidamente sin aparecer en `list_projects`, hasta el próximo bump de `SCHEMA_VERSION`. | `src/rag/indexer.ts:135`, `:181-182` | Al inicio de un refresh global, borrar filas cuyo `repo` no esté en `config.all`. |
 | F3 | F | Cuando `splitLongText` corta una sección larga, los pedazos 2..N no contienen el heading en el texto que se embebe (solo en metadata): la mitad keyword sí lo ve (columna FTS con peso 3×), pero el vector semántico de esos pedazos se calcula sin su contexto temático. | `src/rag/chunker.ts:89-129` | Anteponer el heading al texto que se manda a embeber (no al `content` almacenado). |
-| B-1 | B | `search_project_docs(query, branch: "x")` sin `repo`, sobre un índice poblado que no tiene esa rama, responde "The documentation index is empty. Run refresh_index first" — falso, y manda al agente a un reindexado global que no arregla nada. El caso rama+repo sí está bien resuelto y testeado. | `src/tools/searchProjectDocs.ts:117-119` | Con `branch` y sin `repo`, listar las ramas indexadas globalmente, como ya hace el caso con repo. |
-| B-2 | B | Un `data/index.db` corrupto lanza `SQLITE_NOTADB` dentro de `buildContext()` — a nivel de módulo, fuera del `main().catch` — y el server no arranca, con el error crudo de better-sqlite3 y sin decir que basta borrar el archivo. Contradice la doctrina del proyecto: el índice es un caché derivado, no fuente de verdad. | `src/rag/store.ts:89-92` + `src/index.ts:20` | Try/catch en la apertura; ante `SQLITE_NOTADB`/`SQLITE_CORRUPT`, renombrar y recrear el archivo logueando a stderr, igual que ya se hace con el bump de `SCHEMA_VERSION`. |
+| B-1 | B | `search_project_docs(query, branch: "x")` sin `repo`, sobre un índice poblado que no tiene esa rama, respondía "The documentation index is empty. Run refresh_index first" — falso, y mandaba al agente a un reindexado global que no arregla nada. El caso rama+repo sí estaba bien resuelto y testeado. | `src/tools/searchProjectDocs.ts:117-119` | **[CORREGIDO]** con `branch` y sin `repo`, se listan las ramas indexadas globalmente, como ya hacía el caso con repo; el mensaje "índice vacío" queda solo para cuando de verdad no hay nada indexado. |
+| B-2 | B | Un `data/index.db` corrupto lanzaba `SQLITE_NOTADB`/`SQLITE_CORRUPT` dentro de `buildContext()` — a nivel de módulo, fuera del `main().catch` — y el server no arrancaba, con el error crudo de better-sqlite3 y sin decir que bastaba borrar el archivo. Contradecía la doctrina del proyecto: el índice es un caché derivado, no fuente de verdad. | `src/rag/store.ts:89-92` + `src/index.ts:20` | **[CORREGIDO]** la apertura de la base detecta `SQLITE_NOTADB`/`SQLITE_CORRUPT`, mueve el archivo a `<path>.corrupt-<timestamp>` (además de sus sidecars `-wal`/`-shm`) logueando a stderr, y arranca con un índice vacío en vez de crashear. En Windows hubo que cerrar el handle abierto por better-sqlite3 antes de poder renombrar el archivo. |
 | G1 | G | La descripción de `refresh_index` afirmaba *"Indexing is on-demand: nothing updates the index on its own"* — falso desde que existe el auto-index de arranque. La descripción es la lógica de ruteo por convención del propio proyecto: un agente que la lea dispara reindexados completos innecesarios justo después de un arranque que ya refrescó. | `src/tools/refreshIndex.ts:14-15` | **[CORREGIDO]** descripción actualizada: menciona el auto-index y cuándo tiene sentido forzar. |
 | G2 | G | `get_file_content` puede devolver hasta 400 KB inline (~100k tokens) al contexto del agente: el rechazo por tamaño está bien resuelto (mensaje accionable que deriva a `search_project_docs`), pero un archivo de 390 KB pasa el guard entero. | `src/github/octokitClient.ts:18`, `:116-121` | Bajar el techo o agregar `max_chars`/offset con truncado explícito y `truncated: true`. |
 | D1 | D | `guard` devolvía al agente solo `error.message` y no escribía nada en stderr: el stack trace de un error no-dominio se perdía para siempre. Único punto ciego de diagnosticabilidad — si falla en otra máquina sin acceso remoto, el log del server no registra ni en qué tool falló. | `src/tools/shared.ts:16-25` | **[CORREGIDO]** el error inesperado se loguea completo a stderr antes de responder. |
@@ -105,14 +105,14 @@ Ya aplicados en esta pasada: **G1** (descripción de `refresh_index`), **D1**
 (comparador NaN), **B-7** (`Number.isFinite` en vectores), **B-8**
 (`Number` vs `parseFloat`), **A5** (`mapWithLimit` en `list_projects`).
 
+Aplicados en una segunda pasada (2026-08-30): **B-2** (recuperación ante
+`index.db` corrupto) y **B-1** (mensaje correcto para `branch` sin `repo`).
+
 Pendientes, en orden de valor:
 
-1. **B-2** — recuperación ante `index.db` corrupto (renombrar y recrear): es
-   el fallo más probable de "no arranca en la máquina de otra persona".
-2. **B-1** — mensaje correcto para `branch` sin `repo` en `search_project_docs`.
-3. **B-3** — `min(1)` en `compare_status`.
-4. **F4** — `.max()` en la query de búsqueda.
-5. **A3** — keyear el single-flight por repo resuelto.
+1. **B-3** — `min(1)` en `compare_status`.
+2. **F4** — `.max()` en la query de búsqueda.
+3. **A3** — keyear el single-flight por repo resuelto.
 
 ---
 
@@ -168,3 +168,19 @@ Pendientes, en orden de valor:
 
 Verificado después de los cambios: **96 tests en verde** (83 de línea base +
 13 nuevos), `typecheck`, `typecheck:test` y `build` limpios.
+
+**Segunda pasada (2026-08-30):**
+
+6. **B-2** — `VectorStore.open` intenta abrir la base normalmente; si
+   better-sqlite3 falla con `SQLITE_NOTADB`/`SQLITE_CORRUPT` (el error solo
+   surge en la primera sentencia real, no en el `new Database(...)`), cierra
+   el handle, mueve el archivo y sus sidecars WAL/SHM a
+   `<path>.corrupt-<timestamp>` logueando a stderr, y abre una base nueva. El
+   índice sigue siendo un caché descartable — la política es la misma que ya
+   aplica `migrate()` ante un bump de `SCHEMA_VERSION`.
+7. **B-1** — `describeEmptyScope` ahora distingue, para `branch` sin `repo`,
+   entre "no hay nada indexado en ningún lado" (mensaje original) y "esa rama
+   no existe pero otras sí" (lista las ramas indexadas globalmente).
+
+Verificado tras la segunda pasada: **98 tests en verde** (+2), `typecheck`,
+`typecheck:test` y `build` limpios.

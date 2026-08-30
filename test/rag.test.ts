@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { test } from 'node:test';
 import { Indexer } from '../src/rag/indexer.js';
 import { VectorStore, normalizeVector } from '../src/rag/store.js';
@@ -15,6 +17,21 @@ test('normalizeVector yields a unit vector and leaves a zero vector alone', () =
   const unit = normalizeVector([3, 4]);
   assert.ok(Math.abs(Math.hypot(unit[0]!, unit[1]!) - 1) < 1e-9);
   assert.deepEqual(normalizeVector([0, 0]), [0, 0]);
+});
+
+test('a corrupt index.db is quarantined instead of taking the server down', () => {
+  const dbPath = tempDbPath();
+  // Same failure a truncated copy or a disk-full write leaves behind: a file
+  // that exists but is not a SQLite database at all.
+  writeFileSync(dbPath, 'not a sqlite file');
+
+  const store = new VectorStore(dbPath);
+  assert.equal(store.totalChunks(), 0, 'the fresh replacement store must be usable');
+  store.close();
+
+  assert.ok(existsSync(dbPath), 'a new, valid database now lives at the original path');
+  const quarantined = readdirSync(dirname(dbPath)).filter(name => name.includes('.corrupt-'));
+  assert.equal(quarantined.length, 1, 'the unreadable file must be moved aside, not deleted');
 });
 
 test('indexing only picks up the configured docs, never source code', async () => {
