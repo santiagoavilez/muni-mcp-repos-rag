@@ -20,6 +20,9 @@ export async function guard(run: () => Promise<CallToolResult>): Promise<CallToo
     if (DOMAIN_ERRORS.some(type => error instanceof type)) {
       return fail((error as Error).message);
     }
+    // The agent only gets the message; the stack has to survive somewhere a
+    // human can find it, and stderr is the one channel MCP leaves for that.
+    console.error('[tool] unexpected error:', error);
     const detail = error instanceof Error ? error.message : String(error);
     return fail(`Unexpected error: ${detail}`);
   }

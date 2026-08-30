@@ -12,6 +12,8 @@ import { IndexStats } from './store.js';
 export interface AutoIndexContext {
   config: { all: ConfiguredRepo[] };
   store: { stats(): IndexStats[] };
+  /** Staleness compares each run's model against the one configured now. */
+  embeddings: { model: string };
   indexer: { refresh(reference?: string): Promise<IndexReport> };
 }
 
@@ -51,7 +53,13 @@ export async function scheduleStartupRefresh(
     }
 
     const now = options.now ?? new Date();
-    const stale = selectStaleRepos(context.config.all, context.store.stats(), maxAgeHours, now);
+    const stale = selectStaleRepos(
+      context.config.all,
+      context.store.stats(),
+      maxAgeHours,
+      now,
+      context.embeddings.model
+    );
 
     if (stale.length === 0) {
       console.error(
@@ -127,7 +135,9 @@ async function refreshOne(context: AutoIndexContext, repo: ConfiguredRepo): Prom
  */
 function readMaxAgeHours(): number {
   const raw = readEnv('REPO_RAG_AUTO_INDEX_HOURS', String(DEFAULT_MAX_AGE_HOURS));
-  const parsed = Number.parseFloat(raw);
+  // Number, not parseFloat: parseFloat("12abc") is 12, so a typo would pass
+  // silently and the warning below would never fire.
+  const parsed = Number(raw);
 
   if (!Number.isFinite(parsed) || parsed < 0) {
     console.error(

@@ -198,6 +198,44 @@ test('search_project_docs tells the agent to reindex instead of returning nothin
   await harness.close();
 });
 
+test('search_project_docs refuses an index built with another embedding model', async () => {
+  const harness = await connect();
+
+  // Planted directly in the store as a different model would have written it.
+  // The dimension count matches the fake provider's on purpose: only the
+  // recorded model can betray the mismatch, exactly the failure mode when
+  // REPO_RAG_EMBED_MODEL changes between two same-dimension models.
+  harness.context.store.replaceBranch(
+    'example-org/turnos',
+    'main',
+    [
+      {
+        repo: 'example-org/turnos',
+        alias: 'turnos',
+        branch: 'main',
+        path: 'README.md',
+        chunk_index: 0,
+        heading: 'Turnos',
+        content: 'Los vecinos sacan turno online.',
+        embedding: new Array(20).fill(0.1)
+      }
+    ],
+    'some-other-model',
+    1
+  );
+
+  const outcome = await call(harness.client, 'search_project_docs', {
+    query: 'como sacan turno los vecinos'
+  });
+
+  assert.equal(outcome.isError, true, 'a wrong-model index must refuse, not answer');
+  assert.match(outcome.text, /built with embedding model "some-other-model"/);
+  assert.match(outcome.text, /configured with "fake-test-model"/);
+  assert.match(outcome.text, /refresh_index/);
+
+  await harness.close();
+});
+
 test('refresh_index then search_project_docs answers with a cited fragment', async () => {
   const harness = await connect();
 

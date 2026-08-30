@@ -5,7 +5,7 @@ import {
   isMarkdown,
   matchesDocPattern
 } from '../config/repos.js';
-import { NotFoundError } from '../core/errors.js';
+import { NotFoundError, RateLimitError } from '../core/errors.js';
 import { GitHubClient } from '../github/types.js';
 import { chunkMarkdown } from './chunker.js';
 import { EmbeddingProvider } from './embeddings.js';
@@ -135,22 +135,28 @@ export class Indexer {
     const targets = reference ? [this.config.resolve(reference)] : this.config.all;
     const results: RepoIndexResult[] = [];
 
-    for (const target of targets) {
+    for (let at = 0; at < targets.length; at += 1) {
+      const target = targets[at]!;
       try {
         results.push(await this.refreshRepo(target));
       } catch (error) {
-        results.push({
-          repo: target.fullName,
-          alias: target.alias,
-          branches: [],
-          files: 0,
-          chunks: 0,
-          embedded_chunks: 0,
-          reused_chunks: 0,
-          missing_branches: [],
-          pruned_branches: 0,
-          error: error instanceof Error ? error.message : String(error)
-        });
+        results.push(
+          failedRepoResult(target, error instanceof Error ? error.message : String(error))
+        );
+
+        // A rate limit is a global failure, not a per-repo one: every repo
+        // still in the queue draws on the same exhausted quota, so continuing
+        // burns doomed requests straight into GitHub's abuse detection. The
+        // rest of the run is reported as skipped instead of attempted.
+        if (error instanceof RateLimitError) {
+          const detail =
+            'skipped: GitHub rate limit exhausted' +
+            (error.resetAt ? ` (resets at ${error.resetAt.toISOString()})` : '');
+          for (const remaining of targets.slice(at + 1)) {
+            results.push(failedRepoResult(remaining, detail));
+          }
+          break;
+        }
       }
     }
 
@@ -165,6 +171,9 @@ export class Indexer {
       try {
         branches.push(await this.refreshBranch(target, branch.name, branch.active));
       } catch (error) {
+        // Not a per-branch failure: the next branch's requests hit the same
+        // exhausted quota. Let runRefresh abort the whole run.
+        if (error instanceof RateLimitError) throw error;
         branches.push({
           branch: branch.name,
           files: 0,
@@ -262,8 +271,12 @@ export class Indexer {
       } catch (error) {
         // A doc pattern naming a file that does not exist on this branch is
         // normal (not every repo has NEGOCIO.md); anything else is worth
-        // surfacing but still not worth aborting the branch for.
+        // surfacing but still not worth aborting the branch for. A rate limit
+        // is the exception: every remaining file costs a request against a
+        // quota that is already gone, so it aborts the run instead of turning
+        // into a hundred "skipped" lines.
         if (error instanceof NotFoundError) continue;
+        if (error instanceof RateLimitError) throw error;
         skipped.push(`${path} (${error instanceof Error ? error.message : String(error)})`);
         continue;
       }
@@ -401,4 +414,20 @@ export class Indexer {
 
     return [...paths].sort();
   }
+}
+
+/** Zero-counter result for a repo that failed or never got its turn. */
+function failedRepoResult(target: ConfiguredRepo, message: string): RepoIndexResult {
+  return {
+    repo: target.fullName,
+    alias: target.alias,
+    branches: [],
+    files: 0,
+    chunks: 0,
+    embedded_chunks: 0,
+    reused_chunks: 0,
+    missing_branches: [],
+    pruned_branches: 0,
+    error: message
+  };
 }

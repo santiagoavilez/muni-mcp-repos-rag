@@ -155,7 +155,9 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 }
 
 function assertVector(vector: unknown, model: string): number[] {
-  if (!Array.isArray(vector) || vector.length === 0 || vector.some(v => typeof v !== 'number')) {
+  // Number.isFinite, not typeof: a NaN component would be persisted as-is and
+  // every later search against it scores NaN, silently.
+  if (!Array.isArray(vector) || vector.length === 0 || vector.some(v => !Number.isFinite(v))) {
     throw new EmbeddingsUnavailableError(
       `Ollama returned an unusable embedding for model "${model}".`
     );

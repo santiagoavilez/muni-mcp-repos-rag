@@ -44,6 +44,8 @@ export interface SearchHit {
 export interface IndexStats {
   repo: string;
   branch: string;
+  /** Embedding model the branch was indexed with. */
+  model: string;
   chunks: number;
   files: number;
   indexed_at: string;
@@ -500,7 +502,7 @@ export class VectorStore {
   stats(): IndexStats[] {
     return this.db
       .prepare(
-        'SELECT repo, branch, chunks, files, indexed_at FROM index_runs ORDER BY repo, branch'
+        'SELECT repo, branch, model, chunks, files, indexed_at FROM index_runs ORDER BY repo, branch'
       )
       .all() as IndexStats[];
   }
@@ -509,9 +511,23 @@ export class VectorStore {
   statsFor(repo: string): IndexStats[] {
     return this.db
       .prepare(
-        'SELECT repo, branch, chunks, files, indexed_at FROM index_runs WHERE repo = ? ORDER BY branch'
+        'SELECT repo, branch, model, chunks, files, indexed_at FROM index_runs ' +
+          'WHERE repo = ? ORDER BY branch'
       )
       .all(repo) as IndexStats[];
+  }
+
+  /**
+   * Distinct embedding models recorded in `index_runs`, optionally for one
+   * repo. More than one entry — or one entry that is not the configured model —
+   * means part of the index was built by a different model, which a dimension
+   * check cannot catch when the two models agree on the dimension count.
+   */
+  indexedModels(repo?: string): string[] {
+    const rows = repo
+      ? this.db.prepare('SELECT DISTINCT model FROM index_runs WHERE repo = ?').all(repo)
+      : this.db.prepare('SELECT DISTINCT model FROM index_runs').all();
+    return (rows as { model: string }[]).map(row => row.model);
   }
 
   totalChunks(scope: SearchScope = {}): number {

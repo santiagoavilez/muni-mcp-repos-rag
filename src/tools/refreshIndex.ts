@@ -11,8 +11,10 @@ export function registerRefreshIndex(server: McpServer, context: ServerContext):
       description:
         'Re-reads the configured documentation files from GitHub, splits them, computes local ' +
         'embeddings and rewrites the search index. Run it when search_project_docs says the ' +
-        'index is empty or stale, or after someone tells you the docs changed. Indexing is ' +
-        'on-demand: nothing updates the index on its own. Pass `repo` to rebuild a single ' +
+        'index is empty or stale, or after someone tells you the docs changed. The index ' +
+        'also refreshes itself in the background at server startup when it is older than ' +
+        'the configured age (12h by default); use this tool to force a refresh right now — ' +
+        'for example after a push you just made. Pass `repo` to rebuild a single ' +
         'project (fast); omit it to rebuild all of them (slow — it can take minutes). ' +
         'Each repo is indexed on every branch configured for it (typically "main" and ' +
         '"dev") plus any recently active branch, and branches that disappeared are dropped ' +

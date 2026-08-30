@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { ConfiguredRepo } from '../config/repos.js';
+import { mapWithLimit } from '../core/concurrency.js';
 import { NotFoundError, PermissionError, RateLimitError, ValidationError } from '../core/errors.js';
 import {
   BranchSummary,
@@ -180,35 +181,36 @@ export class OctokitGitHubClient implements GitHubClient {
       })
     );
 
-    // listBranches gives no commit date, so each head is dated individually.
-    // Bounded by COUNT_PAGE_SIZE and only ever called during a refresh.
-    const summaries = await Promise.all(
-      data.map(async branch => {
-        let date: string | null = null;
-        try {
-          const { data: commit } = await this.call(target, () =>
-            this.octokit.repos.getCommit({
-              owner: target.owner,
-              repo: target.repo,
-              ref: branch.commit.sha
-            })
-          );
-          date = commit.commit.author?.date ?? commit.commit.committer?.date ?? null;
-        } catch {
-          // An undatable branch simply sorts last; it must not fail the listing.
-        }
+    // listBranches gives no commit date, so each head is dated individually —
+    // one extra request per branch, and this runs on EVERY list_branches call,
+    // not just during a refresh. At most four in flight: GitHub's secondary
+    // rate limits trigger on concurrency, and a repo can carry up to
+    // COUNT_PAGE_SIZE branches.
+    const summaries = await mapWithLimit(data, 4, async branch => {
+      let date: string | null = null;
+      try {
+        const { data: commit } = await this.call(target, () =>
+          this.octokit.repos.getCommit({
+            owner: target.owner,
+            repo: target.repo,
+            ref: branch.commit.sha
+          })
+        );
+        date = commit.commit.author?.date ?? commit.commit.committer?.date ?? null;
+      } catch {
+        // An undatable branch simply sorts last; it must not fail the listing.
+      }
 
-        return {
-          name: branch.name,
-          sha: branch.commit.sha,
-          last_commit_date: date,
-          is_default: branch.name === meta.default_branch
-        };
-      })
-    );
+      return {
+        name: branch.name,
+        sha: branch.commit.sha,
+        last_commit_date: date,
+        is_default: branch.name === meta.default_branch
+      };
+    });
 
     return summaries.sort(
-      (a, b) => Date.parse(b.last_commit_date ?? '') - Date.parse(a.last_commit_date ?? '') || 0
+      (a, b) => commitDateRank(b.last_commit_date) - commitDateRank(a.last_commit_date)
     );
   }
 
@@ -256,7 +258,18 @@ function firstLine(message: string): string {
   return line.trim();
 }
 
-function normalizePath(path: string): string {
+/**
+ * Sort key for a branch's last commit date. Missing AND unparseable dates rank
+ * as -Infinity: Date.parse of either is NaN, and NaN in a comparator leaves
+ * the order arbitrary instead of putting undated branches last.
+ */
+function commitDateRank(iso: string | null): number {
+  if (iso === null) return Number.NEGATIVE_INFINITY;
+  const parsed = Date.parse(iso);
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+}
+
+export function normalizePath(path: string): string {
   const trimmed = path.trim().replace(/^\/+/, '');
   if (trimmed === '') {
     throw new ValidationError('Empty file path.');
@@ -321,5 +334,17 @@ export function translateGitHubError(
     );
   }
 
+  // Any other HTTP status becomes a fresh Error built from the status and
+  // message alone. Never propagate the raw octokit object: it carries the
+  // request, headers included, and their redaction is the dependency's
+  // guarantee, not ours.
+  if (typeof status === 'number') {
+    return new Error(
+      `GitHub answered ${status} while reading ${where}: ${shaped?.message ?? 'unknown error'}`
+    );
+  }
+
+  // No status means this never was an HTTP response (a network failure, a bug
+  // on our side); a plain Error has nothing to leak.
   return error instanceof Error ? error : new Error(String(error));
 }

@@ -21,7 +21,8 @@ export function selectStaleRepos(
   repos: readonly ConfiguredRepo[],
   stats: readonly IndexStats[],
   maxAgeHours: number,
-  now: Date
+  now: Date,
+  currentModel: string
 ): ConfiguredRepo[] {
   // Zero (or anything below it) is the off switch, and an off switch that
   // still triggers a full reindex on a repo nobody ever indexed is not off.
@@ -29,6 +30,13 @@ export function selectStaleRepos(
 
   const newestByRepo = new Map<string, number>();
   for (const entry of stats) {
+    // A run made with another embedding model is not merely old, it is WRONG:
+    // its vectors answer queries embedded by a model they never came from, and
+    // two models that agree on the dimension count make that invisible at
+    // query time. Such a run cannot vouch for the repo's freshness, so it is
+    // ignored exactly like a run that was never recorded.
+    if (entry.model !== currentModel) continue;
+
     const at = Date.parse(entry.indexed_at);
     // An unreadable timestamp is not evidence of freshness, so it is not
     // allowed to raise the repo's high-water mark: the run is treated as if it

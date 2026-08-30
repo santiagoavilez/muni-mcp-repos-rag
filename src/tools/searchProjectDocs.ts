@@ -64,6 +64,21 @@ export function registerSearchProjectDocs(server: McpServer, context: ServerCont
           );
         }
 
+        // An index built with another embedding model must refuse to answer,
+        // not answer wrong: two models can agree on the dimension count, so
+        // the dimension guard inside search would happily score one model's
+        // vectors against the other's query and every result would be quietly
+        // broken. Auto-index normally rebuilds this, but it can be disabled.
+        const stale = context.store
+          .indexedModels(target?.fullName)
+          .find(model => model !== context.embeddings.model);
+        if (stale !== undefined) {
+          throw new IndexEmptyError(
+            `The index was built with embedding model "${stale}" but the server is configured ` +
+              `with "${context.embeddings.model}". Run refresh_index to rebuild it.`
+          );
+        }
+
         const embedding = await context.embeddings.embedQuery(query);
         // The raw text goes in too: the keyword half needs the actual words,
         // which the embedding has already thrown away.

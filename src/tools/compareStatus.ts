@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { ConfiguredRepo } from '../config/repos.js';
 import { ServerContext } from '../context.js';
+import { mapWithLimit } from '../core/concurrency.js';
 import { ProjectStatus } from '../github/types.js';
 import { ok, guard } from './shared.js';
 
@@ -179,30 +180,4 @@ function rank(iso: string | null): number {
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-/**
- * Runs `run` over `items` with at most `limit` promises pending at a time,
- * preserving input order in the results. A handful of worker loops pulling
- * from a shared cursor is all this needs; adding a dependency for it would
- * cost more than the fifteen lines it replaces.
- */
-async function mapWithLimit<T, R>(
-  items: T[],
-  limit: number,
-  run: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const index = next;
-      next += 1;
-      results[index] = await run(items[index]);
-    }
-  });
-
-  await Promise.all(workers);
-  return results;
 }

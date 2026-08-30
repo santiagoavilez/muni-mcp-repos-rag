@@ -9,6 +9,8 @@ import { IndexStats, VectorStore } from '../src/rag/store.js';
 import { FakeEmbeddingProvider, tempDbPath, testConfig, testGitHub } from './fixtures.js';
 
 const NOW = new Date('2026-08-29T12:00:00.000Z');
+/** The model the fixtures' FakeEmbeddingProvider reports. */
+const MODEL = 'fake-test-model';
 const TURNOS = 'example-org/turnos';
 const TRAMITES = 'example-org/tramites';
 
@@ -17,8 +19,8 @@ function hoursAgo(hours: number): string {
   return new Date(NOW.getTime() - hours * 60 * 60 * 1000).toISOString();
 }
 
-function run(branch: string, repo: string, indexedAt: string): IndexStats {
-  return { repo, branch, chunks: 1, files: 1, indexed_at: indexedAt };
+function run(branch: string, repo: string, indexedAt: string, model = MODEL): IndexStats {
+  return { repo, branch, model, chunks: 1, files: 1, indexed_at: indexedAt };
 }
 
 function aliases(repos: ConfiguredRepo[]): string[] {
@@ -30,23 +32,23 @@ const REPOS = testConfig().all;
 test('a max age of zero disables staleness entirely', () => {
   // Not even a repo that was never indexed counts: 0 means the feature is off,
   // and an "off" switch that still triggers a full reindex is not off.
-  assert.deepEqual(selectStaleRepos(REPOS, [], 0, NOW), []);
-  assert.deepEqual(selectStaleRepos(REPOS, [], -1, NOW), []);
+  assert.deepEqual(selectStaleRepos(REPOS, [], 0, NOW, MODEL), []);
+  assert.deepEqual(selectStaleRepos(REPOS, [], -1, NOW, MODEL), []);
 });
 
 test('a configured repo with no index run at all is stale', () => {
   const stats = [run('main', TURNOS, hoursAgo(1))];
 
-  assert.deepEqual(aliases(selectStaleRepos(REPOS, stats, 12, NOW)), ['tramites']);
+  assert.deepEqual(aliases(selectStaleRepos(REPOS, stats, 12, NOW, MODEL)), ['tramites']);
 });
 
 test('staleness is decided per repo by the age of its newest run', () => {
   const stale = [run('main', TURNOS, hoursAgo(13)), run('main', TRAMITES, hoursAgo(1))];
 
-  assert.deepEqual(aliases(selectStaleRepos(REPOS, stale, 12, NOW)), ['turnos']);
+  assert.deepEqual(aliases(selectStaleRepos(REPOS, stale, 12, NOW, MODEL)), ['turnos']);
 
   const fresh = [run('main', TURNOS, hoursAgo(11)), run('main', TRAMITES, hoursAgo(1))];
-  assert.deepEqual(selectStaleRepos(REPOS, fresh, 12, NOW), []);
+  assert.deepEqual(selectStaleRepos(REPOS, fresh, 12, NOW, MODEL), []);
 });
 
 test('a repo with several branches is judged by its newest branch, not its oldest', () => {
@@ -57,13 +59,25 @@ test('a repo with several branches is judged by its newest branch, not its oldes
     run('main', TRAMITES, hoursAgo(1))
   ];
 
-  assert.deepEqual(selectStaleRepos(REPOS, stats, 12, NOW), []);
+  assert.deepEqual(selectStaleRepos(REPOS, stats, 12, NOW, MODEL), []);
 });
 
 test('an unparseable indexed_at counts as stale', () => {
   const stats = [run('main', TURNOS, 'whenever'), run('main', TRAMITES, hoursAgo(1))];
 
-  assert.deepEqual(aliases(selectStaleRepos(REPOS, stats, 12, NOW)), ['turnos']);
+  assert.deepEqual(aliases(selectStaleRepos(REPOS, stats, 12, NOW, MODEL)), ['turnos']);
+});
+
+test('a recent run made with another embedding model still counts as stale', () => {
+  // Not merely old: an index built by another model answers queries with the
+  // wrong vectors, and a matching dimension count hides it at query time. Only
+  // runs made with the CURRENT model can vouch for freshness.
+  const stats = [
+    run('main', TURNOS, hoursAgo(1), 'some-other-model'),
+    run('main', TRAMITES, hoursAgo(1))
+  ];
+
+  assert.deepEqual(aliases(selectStaleRepos(REPOS, stats, 12, NOW, MODEL)), ['turnos']);
 });
 
 /** Counts the branch listings, which is exactly one per repo per real run. */
@@ -121,6 +135,7 @@ function stubContext(
   return {
     config: { all: REPOS },
     store: { stats: () => stats },
+    embeddings: { model: MODEL },
     indexer: { refresh }
   };
 }
