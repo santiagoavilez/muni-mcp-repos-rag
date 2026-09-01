@@ -10,8 +10,9 @@ export function fail(message: string): CallToolResult {
 }
 
 /**
- * Runs a tool body and turns domain errors into readable tool errors instead of
- * transport-level exceptions, so the agent can correct itself and retry.
+ * Ejecuta el cuerpo de una tool y convierte los errores de dominio en tool errors
+ * legibles en vez de excepciones a nivel de transporte, para que el agente se
+ * corrija solo y reintente.
  */
 export async function guard(run: () => Promise<CallToolResult>): Promise<CallToolResult> {
   try {
@@ -20,8 +21,9 @@ export async function guard(run: () => Promise<CallToolResult>): Promise<CallToo
     if (DOMAIN_ERRORS.some(type => error instanceof type)) {
       return fail((error as Error).message);
     }
-    // The agent only gets the message; the stack has to survive somewhere a
-    // human can find it, and stderr is the one channel MCP leaves for that.
+    // Al agente le llega solo el mensaje; el stack tiene que sobrevivir en algún
+    // lado donde una persona pueda encontrarlo, y stderr es el único canal que
+    // MCP deja para eso.
     console.error('[tool] unexpected error:', error);
     const detail = error instanceof Error ? error.message : String(error);
     return fail(`Unexpected error: ${detail}`);

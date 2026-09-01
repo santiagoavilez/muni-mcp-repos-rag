@@ -140,8 +140,10 @@ desactiva. Un repo sin ninguna corrida registrada cuenta siempre como vencido.
   índice local (pero sigue sin tocar GitHub).
 - **Fallo parcial > fallo total.** Un repo caído no debe dejar al usuario sin
   listado ni sin índice: se reporta por repo y el resto sigue.
-- Artefactos técnicos (código, comentarios, identificadores) en inglés;
-  documentación para el equipo en español.
+- **Código en inglés, comentarios en español.** Identificadores, nombres de
+  tools, mensajes de error y descripciones de tools van en inglés (el agente los
+  lee y son parte del contrato MCP). Los comentarios y la documentación para el
+  equipo van en español neutro: los lee la gente de la organización, no el modelo.
 
 ---
 

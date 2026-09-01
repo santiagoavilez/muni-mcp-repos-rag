@@ -17,18 +17,18 @@ export interface MockRepoFixture {
   open_pull_requests?: number;
   open_issues?: number;
   commits?: CommitSummary[];
-  /** path -> file text on the default branch. Doubles as the tree listing. */
+  /** ruta -> texto del archivo en la rama default. Sirve también como listado del árbol. */
   files?: Record<string, string>;
   /**
-   * branch -> (path -> file text), for branches other than the default.
-   * A branch absent from here does not exist, exactly like on GitHub.
+   * rama -> (ruta -> texto del archivo), para ramas distintas de la default.
+   * Una rama que no esté acá no existe, igual que en GitHub.
    */
   branches?: Record<string, { last_commit_date?: string; files: Record<string, string> }>;
 }
 
 /**
- * In-memory GitHub. Lets the tools, the indexer and the tool contracts be
- * exercised with no network, no token and no rate limit.
+ * GitHub en memoria. Permite ejercitar las tools, el indexador y los contratos
+ * de cada tool sin red, sin token y sin rate limit.
  */
 export class MockGitHubClient implements GitHubClient {
   constructor(private readonly fixtures: Record<string, MockRepoFixture> = {}) {}
@@ -123,8 +123,8 @@ export class MockGitHubClient implements GitHubClient {
   }
 
   /**
-   * Resolves a branch to its file map. An unknown branch is a NotFoundError,
-   * matching what GitHub does rather than silently falling back to the default.
+   * Resuelve una rama a su mapa de archivos. Una rama desconocida es un
+   * NotFoundError, igual que en GitHub, en vez de caer en silencio a la default.
    */
   private filesOf(target: ConfiguredRepo, ref?: string): Record<string, string> {
     const fixture = this.fixture(target);

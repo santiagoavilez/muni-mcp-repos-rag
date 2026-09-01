@@ -25,7 +25,7 @@ test('indexes every configured branch that exists, and reports the ones that do 
   assert.ok(store.totalChunks({ repo: 'example-org/turnos', branch: 'main' }) > 0);
   assert.ok(store.totalChunks({ repo: 'example-org/turnos', branch: 'dev' }) > 0);
 
-  // tramites has no dev branch — that is a note, never a failure.
+  // tramites no tiene rama dev: eso es una nota, nunca una falla.
   const tramites = (await indexer.refresh('tramites')).results[0]!;
   assert.equal(tramites.error, null);
   assert.deepEqual(tramites.missing_branches, ['dev']);
@@ -46,12 +46,12 @@ test('the same file on two branches is stored separately, with its own content',
   });
   const tracker = hits.filter(hit => hit.path === 'TRACKER.md');
 
-  // Identical text on both branches collapses into ONE hit naming both...
+  // El texto idéntico en las dos ramas colapsa en UN resultado que nombra a ambas...
   const shared = tracker.filter(hit => hit.branches.length > 1);
   assert.ok(shared.length > 0, 'identical chunks must collapse across branches');
   assert.ok(shared.every(hit => hit.branches.join() === 'main,dev' || hit.branches.join() === 'dev,main'));
 
-  // ...while text that differs stays separate and is attributed correctly.
+  // ...mientras que el texto que difiere queda separado y se atribuye correctamente.
   const onlyDev = tracker.find(hit => /replica/.test(hit.content))!;
   assert.deepEqual(onlyDev.branches, ['dev'], 'dev-only content belongs to dev alone');
 
@@ -77,7 +77,7 @@ test('a branch filter restricts the search to that branch only', async () => {
 });
 
 test('feature-branch docs are invisible until the active window is enabled', async () => {
-  // Default config: only main and dev. The pagos doc lives on a feature branch.
+  // Configuración default: solo main y dev. El doc de pagos vive en una feature branch.
   const off = build();
   await off.indexer.refresh('turnos');
   const missed = off.store.search(await off.embeddings.embedQuery('pagos con tarjeta'), 20, {
@@ -90,7 +90,7 @@ test('feature-branch docs are invisible until the active window is enabled', asy
   );
   off.store.close();
 
-  // Same repo, same fixtures, activeBranchDays on.
+  // Mismo repo, mismos fixtures, activeBranchDays activado.
   const on = build({ activeBranchDays: 30 });
   const result = (await on.indexer.refresh('turnos')).results[0]!;
 
@@ -122,8 +122,8 @@ test('a stale branch is outside the window and never indexed', async () => {
 });
 
 test('maxActiveBranches caps how many feature branches are indexed', async () => {
-  // Two branches are inside the window; the cap must let exactly one through,
-  // and it must be the most recently pushed one.
+  // Dos ramas caen dentro de la ventana; el techo tiene que dejar pasar
+  // exactamente una, y tiene que ser la del push más reciente.
   const uncapped = build({ activeBranchDays: 30 });
   const all = (await uncapped.indexer.refresh('turnos')).results[0]!;
   assert.equal(all.branches.filter(branch => branch.active).length, 2);
@@ -144,7 +144,7 @@ test('branches that fall out of the config are pruned from the index', async () 
   const embeddings = new FakeEmbeddingProvider();
   const github = testGitHub();
 
-  // First run indexes the feature branch too.
+  // La primera corrida indexa también la feature branch.
   const wide = new VectorStore(dbPath);
   await new Indexer(testConfig({ activeBranchDays: 30 }), github, embeddings, wide).refresh(
     'turnos'
@@ -152,8 +152,8 @@ test('branches that fall out of the config are pruned from the index', async () 
   assert.ok(wide.totalChunks({ repo: 'example-org/turnos', branch: 'feat/pagos-online' }) > 0);
   wide.close();
 
-  // Second run, window disabled: the feature branch must disappear, and the
-  // configured branches must survive untouched.
+  // Segunda corrida, ventana desactivada: la feature branch tiene que
+  // desaparecer, y las ramas configuradas tienen que sobrevivir intactas.
   const narrow = new VectorStore(dbPath);
   const result = (
     await new Indexer(testConfig(), github, embeddings, narrow).refresh('turnos')
@@ -198,7 +198,7 @@ test('a branch that fails does not take the other branches down with it', async 
   assert.equal(main.error, null);
   assert.ok(main.chunks > 0);
   assert.match(dev.error ?? '', /boom: dev unreachable/);
-  // The repo itself is not marked failed: most of it indexed fine.
+  // El repo en sí no se marca como fallido: la mayor parte se indexó bien.
   assert.equal(result.error, null);
 
   store.close();
@@ -207,7 +207,7 @@ test('a branch that fails does not take the other branches down with it', async 
 test('a stale v1 index is dropped instead of being read with the wrong shape', async () => {
   const dbPath = tempDbPath();
 
-  // Recreate the schema the first release shipped: no `branch` column.
+  // Se recrea el esquema que trajo la primera release: sin columna `branch`.
   const { default: Database } = await import('better-sqlite3');
   const legacy = new Database(dbPath);
   legacy.exec(`
@@ -226,10 +226,10 @@ test('a stale v1 index is dropped instead of being read with the wrong shape', a
 
   const store = new VectorStore(dbPath);
 
-  // Dropped, not silently reused: the old rows cannot say which branch they are.
+  // Se borra, no se reusa en silencio: las filas viejas no pueden decir de qué rama son.
   assert.equal(store.totalChunks(), 0);
 
-  // And the new schema works on the same file.
+  // Y el esquema nuevo funciona sobre el mismo archivo.
   const indexer = new Indexer(testConfig(), testGitHub(), new FakeEmbeddingProvider(), store);
   await indexer.refresh('turnos');
   assert.ok(store.totalChunks({ repo: 'example-org/turnos', branch: 'dev' }) > 0);

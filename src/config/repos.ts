@@ -4,9 +4,9 @@ import { ValidationError } from '../core/errors.js';
 import { REPOS_CONFIG_PATH } from '../core/paths.js';
 
 /**
- * Doc patterns are either an exact path ("README.md") or a directory glob
- * ("docs/**"), which means "every markdown file under docs/, recursively".
- * Nothing fancier is supported on purpose — see matchesDocPattern.
+ * Los patrones de documentos son una ruta exacta ("README.md") o un glob de
+ * directorio ("docs/**"), que significa "todo markdown bajo docs/, recursivo".
+ * A propósito no se soporta nada más sofisticado; ver matchesDocPattern.
  */
 const docPatternSchema = z.string().min(1);
 
@@ -16,12 +16,12 @@ const repoEntrySchema = z.object({
     .min(1)
     .regex(/^[a-z0-9][a-z0-9-]*$/, 'alias must be lowercase kebab-case'),
   repo: z.string().min(1),
-  /** Overrides the top-level org for this repo only. */
+  /** Pisa la org global, solo para este repo. */
   org: z.string().min(1).optional(),
   description: z.string().default(''),
-  /** Overrides defaultDocs for this repo only. */
+  /** Pisa defaultDocs, solo para este repo. */
   docs: z.array(docPatternSchema).optional(),
-  /** Overrides defaultBranches for this repo only. */
+  /** Pisa defaultBranches, solo para este repo. */
   branches: z.array(z.string().min(1)).optional()
 });
 
@@ -29,18 +29,18 @@ const configSchema = z.object({
   org: z.string().min(1),
   defaultDocs: z.array(docPatternSchema).min(1),
   /**
-   * team convention: `main` is production and `dev` is the replica. Branches
-   * listed here that do not exist in a given repo are skipped silently, so one
-   * list works for every repo.
+   * Convención del equipo: `main` es producción y `dev` la réplica. Las ramas
+   * listadas acá que no existan en un repo dado se saltean en silencio, así una
+   * sola lista sirve para todos los repos.
    */
   defaultBranches: z.array(z.string().min(1)).min(1).default(['main', 'dev']),
   /**
-   * Also index any branch pushed within this many days, on top of the fixed
-   * list. Work in progress lives on feature branches whose docs never reach
-   * `main`, and that is exactly what people ask about. 0 disables it.
+   * Además de la lista fija, indexa toda rama con push dentro de esta cantidad
+   * de días. El trabajo en curso vive en feature branches cuya documentación
+   * nunca llega a `main`, y es justo eso lo que la gente pregunta. 0 lo desactiva.
    */
   activeBranchDays: z.number().int().min(0).max(365).default(0),
-  /** Ceiling on how many active branches get indexed per repo, newest first. */
+  /** Techo de ramas activas indexadas por repo, de la más nueva a la más vieja. */
   maxActiveBranches: z.number().int().min(1).max(50).default(5),
   repos: z.array(repoEntrySchema).min(1)
 });
@@ -53,17 +53,17 @@ export interface ConfiguredRepo {
   repo: string;
   description: string;
   docPatterns: string[];
-  /** Branches to index, in priority order. Missing ones are skipped. */
+  /** Ramas a indexar, en orden de prioridad. Las que no existen se saltean. */
   branches: string[];
-  /** "owner/repo" — the canonical key used by the index and every log line. */
+  /** "owner/repo": la clave canónica que usan el índice y cada línea de log. */
   fullName: string;
 }
 
 export interface ReposConfig {
   all: ConfiguredRepo[];
-  /** Resolves an alias, a bare repo name or "owner/repo". Case-insensitive. */
+  /** Resuelve un alias, un nombre de repo pelado o "owner/repo". No distingue mayúsculas. */
   resolve(reference: string): ConfiguredRepo;
-  /** Days of recent activity that make a branch worth indexing. 0 = disabled. */
+  /** Días de actividad reciente que hacen que valga la pena indexar una rama. 0 = desactivado. */
   activeBranchDays: number;
   maxActiveBranches: number;
 }
@@ -135,22 +135,23 @@ function resolveRepo(all: ConfiguredRepo[], reference: string, path: string): Co
   );
 }
 
-/** True when the config still holds the shipped placeholders. */
+/** True cuando la configuración todavía tiene los placeholders de fábrica. */
 export function hasPlaceholders(config: ReposConfig): boolean {
   return config.all.some(repo => PLACEHOLDER.test(repo.fullName));
 }
 
 /**
- * Matches a repo file path against one configured doc pattern.
+ * Compara la ruta de un archivo del repo contra un patrón de documentos.
  *
- *  - "*.md"    every markdown file at the repo ROOT, not recursive
- *  - "docs/**" every markdown file under docs/, recursively
- *  - "**"      every markdown file in the repo, at any depth
- *  - anything else is an exact path
+ *  - "*.md"    todo markdown en la RAÍZ del repo, no recursivo
+ *  - "docs/**" todo markdown bajo docs/, recursivo
+ *  - "**"      todo markdown del repo, a cualquier profundidad
+ *  - cualquier otra cosa es una ruta exacta
  *
- * "*.md" exists because projects drop design documents at the root under names
- * nobody can predict; "**" is deliberately not the default, since it drags in
- * issue templates and dependency docs and multiplies by the branch count.
+ * "*.md" existe porque los proyectos dejan documentos de diseño en la raíz con
+ * nombres que nadie puede predecir; "**" a propósito no es el default, porque
+ * arrastra plantillas de issues y docs de dependencias, y todo eso se multiplica
+ * por la cantidad de ramas.
  */
 export function matchesDocPattern(filePath: string, pattern: string): boolean {
   if (pattern === '**') return isMarkdown(filePath);
@@ -158,14 +159,14 @@ export function matchesDocPattern(filePath: string, pattern: string): boolean {
   if (pattern === '*.md') return !filePath.includes('/') && isMarkdown(filePath);
 
   if (pattern.endsWith('/**')) {
-    const prefix = pattern.slice(0, -2); // keep the trailing slash
+    const prefix = pattern.slice(0, -2); // conserva la barra final
     return filePath.startsWith(prefix) && isMarkdown(filePath);
   }
 
   return filePath === pattern;
 }
 
-/** True when the pattern needs a repo tree listing to be expanded. */
+/** True cuando el patrón necesita listar el árbol del repo para expandirse. */
 export function isGlobPattern(pattern: string): boolean {
   return pattern === '**' || pattern === '*.md' || pattern.endsWith('/**');
 }

@@ -5,10 +5,11 @@ import { VectorStore, toFtsQuery } from '../src/rag/store.js';
 import { FakeEmbeddingProvider, tempDbPath, testConfig, testGitHub } from './fixtures.js';
 
 /**
- * The fake embedding provider has a tiny vocabulary, so a term outside it is
- * INVISIBLE to the semantic half — exactly like a rare proper noun is to a real
- * embedding model. That is what makes these tests meaningful: anything found
- * here was found by the keyword half.
+ * El proveedor de embeddings falso tiene un vocabulario minúsculo, así que un
+ * término fuera de él es INVISIBLE para la mitad semántica, exactamente como lo
+ * es un nombre propio raro para un modelo de embeddings real. Eso es lo que hace
+ * significativos a estos tests: todo lo que se encuentre acá lo encontró la mitad
+ * por palabra clave.
  */
 async function indexed(): Promise<{ store: VectorStore; embeddings: FakeEmbeddingProvider }> {
   const store = new VectorStore(tempDbPath());
@@ -21,19 +22,19 @@ async function indexed(): Promise<{ store: VectorStore; embeddings: FakeEmbeddin
 test('toFtsQuery quotes every term and drops noise', () => {
   assert.equal(toFtsQuery('pagos con tarjeta'), '"pagos" OR "tarjeta"');
 
-  // Stopwords and one/two-letter tokens carry no signal.
+  // Las stopwords y los tokens de una o dos letras no aportan señal.
   assert.equal(toFtsQuery('como se hace el pago'), '"pago"');
 
-  // Duplicates collapse.
+  // Los duplicados colapsan.
   assert.equal(toFtsQuery('pagos pagos pagos'), '"pagos"');
 
-  // Nothing usable must yield null, not a broken expression.
+  // Que no haya nada usable tiene que dar null, no una expresión rota.
   assert.equal(toFtsQuery(''), null);
   assert.equal(toFtsQuery('de la el'), null);
 });
 
 test('FTS5 operators in a question are treated as literal text, not syntax', () => {
-  // Each of these would be a syntax error if passed through raw.
+  // Cada uno de estos sería un error de sintaxis si se pasara crudo.
   for (const hostile of [
     'que pasa con AND OR NOT',
     'busca "comillas" sin cerrar"',
@@ -43,7 +44,7 @@ test('FTS5 operators in a question are treated as literal text, not syntax', () 
   ]) {
     const query = toFtsQuery(hostile);
     if (query === null) continue;
-    // Every term is wrapped in quotes, so no bare operator survives.
+    // Todo término va entre comillas, así no sobrevive ningún operador suelto.
     const bare = query.split(' OR ').filter(term => !/^".*"$/.test(term));
     assert.deepEqual(bare, [], `unquoted term in: ${query}`);
   }
@@ -67,8 +68,8 @@ test('a hostile query returns results instead of throwing', async () => {
 test('an exact rare term is found even when the embedding is blind to it', async () => {
   const { store, embeddings } = await indexed();
 
-  // "provincial" is NOT in the fake vocabulary, so the semantic half cannot
-  // distinguish it. Only BM25 can.
+  // "provincial" NO está en el vocabulario falso, así que la mitad semántica no
+  // puede distinguirlo. Solo BM25 puede.
   const semanticOnly = store.search(await embeddings.embedQuery('provincial'), 5, {});
   const hybrid = store.search(await embeddings.embedQuery('provincial'), 5, {}, 'provincial');
 
@@ -103,7 +104,7 @@ test('a keyword hit is reported as matched_by both, a semantic-only hit is not',
 test('the semantic half still works when no keyword matches', async () => {
   const { store, embeddings } = await indexed();
 
-  // A term that appears nowhere: the keyword half contributes nothing.
+  // Un término que no aparece en ningún lado: la mitad por palabra clave no aporta nada.
   const hits = store.search(
     await embeddings.embedQuery('autenticacion'),
     5,
@@ -136,7 +137,7 @@ test('the keyword half respects the repo and branch scope', async () => {
     'pagos tarjeta'
   );
   assert.ok(branchScoped.every(hit => hit.branches.every(branch => branch === 'main')));
-  // docs/PAGOS.md lives only on the feature branch, so scoping to main hides it.
+  // docs/PAGOS.md vive solo en la feature branch, así que acotar a main lo esconde.
   assert.ok(!branchScoped.some(hit => hit.path === 'docs/PAGOS.md'));
 
   store.close();
@@ -173,8 +174,8 @@ test('the keyword index is rebuilt on reindex, so deleted text stops matching', 
   );
   wide.close();
 
-  // Reindex without the active window: the feature branch is pruned, and its
-  // text must disappear from the keyword index too, not just from `chunks`.
+  // Reindexado sin la ventana de actividad: la feature branch se poda, y su texto
+  // tiene que desaparecer también del índice por palabra clave, no solo de `chunks`.
   const narrow = new VectorStore(dbPath);
   await new Indexer(testConfig(), testGitHub(), embeddings, narrow).refresh('turnos');
 

@@ -33,13 +33,13 @@ test('doc patterns match exact paths and markdown under a glob only', () => {
 
   assert.equal(matchesDocPattern('docs/NEGOCIO.md', 'docs/**'), true);
   assert.equal(matchesDocPattern('docs/deep/nested.md', 'docs/**'), true);
-  // A glob must not drag source code into the index.
+  // Un glob no puede arrastrar código fuente adentro del índice.
   assert.equal(matchesDocPattern('docs/logo.png', 'docs/**'), false);
   assert.equal(matchesDocPattern('src/app.ts', 'docs/**'), false);
 });
 
 test('"*.md" takes root markdown only, never nested files', () => {
-  // The point of this pattern: root design docs nobody can name in advance.
+  // El sentido de este patrón: documentos de diseño en la raíz que nadie puede nombrar de antemano.
   assert.equal(matchesDocPattern('EXTERNAL_ORIGIN_API_DOCUMENTATION.md', '*.md'), true);
   assert.equal(matchesDocPattern('README.md', '*.md'), true);
 

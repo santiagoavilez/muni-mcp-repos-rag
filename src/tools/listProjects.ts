@@ -28,9 +28,9 @@ export function registerListProjects(server: McpServer, context: ServerContext):
               last_activity: meta.last_activity,
               default_branch: meta.default_branch,
               archived: meta.archived,
-              // Which branches actually have searchable content, and how
-              // fresh each one is — the agent needs this to decide whether
-              // an answer is stale or simply not indexed.
+              // Qué ramas tienen realmente contenido buscable, y qué tan
+              // fresca está cada una: el agente necesita esto para decidir si
+              // una respuesta está vencida o simplemente no está indexada.
               indexed_branches: context.store.statsFor(repo.fullName).map(entry => ({
                 branch: entry.branch,
                 files: entry.files,
@@ -39,7 +39,7 @@ export function registerListProjects(server: McpServer, context: ServerContext):
               }))
             };
           } catch (error) {
-            // One unreachable repo must not hide the rest of the list.
+            // Un repo inalcanzable no puede tapar el resto de la lista.
             return {
               alias: repo.alias,
               repo: repo.fullName,

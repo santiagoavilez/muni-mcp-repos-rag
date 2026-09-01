@@ -36,8 +36,8 @@ export function registerListBranches(server: McpServer, context: ServerContext):
         const target = context.config.resolve(repo);
         const branches = await context.github.listBranches(target);
 
-        // Which branches are searchable matters as much as which exist: it tells
-        // the agent whether search_project_docs can answer about this branch.
+        // Qué ramas son buscables importa tanto como cuáles existen: le dice al
+        // agente si search_project_docs puede contestar sobre esta rama.
         const indexed = new Map(
           context.store.statsFor(target.fullName).map(entry => [entry.branch, entry])
         );

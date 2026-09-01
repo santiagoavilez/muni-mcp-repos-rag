@@ -7,14 +7,14 @@ import { EmbeddingProvider, OllamaEmbeddingProvider } from './rag/embeddings.js'
 import { Indexer } from './rag/indexer.js';
 import { VectorStore } from './rag/store.js';
 
-/** Everything the tools depend on, built once at startup. */
+/** Todo de lo que dependen las tools, construido una sola vez al arrancar. */
 export interface ServerContext {
   config: ReposConfig;
   github: GitHubClient;
   embeddings: EmbeddingProvider;
   store: VectorStore;
   indexer: Indexer;
-  /** Human-readable description of the wiring, for the startup log line. */
+  /** Descripción legible del cableado, para la línea de log del arranque. */
   label: string;
 }
 
@@ -33,13 +33,14 @@ export function buildContext(): ServerContext {
 
   const embeddings = new OllamaEmbeddingProvider({
     baseUrl: readEnv('REPO_RAG_OLLAMA_URL', 'http://localhost:11434'),
-    // bge-m3 by default, not nomic-embed-text. Measured on the real corpus with
-    // real questions in Spanish: semantic-only hit@5 went 2/6 -> 4/6, and the
-    // question that motivated the hybrid search moved from rank 146 to rank 3.
-    // It matters more than it looks: with nomic the semantic half was dead
-    // weight and BM25 alone beat the hybrid, so the fusion was paying for
-    // complexity it never earned. It costs 2.3x more per chunk, which only a
-    // cold reindex pays — the embedding cache absorbs every warm refresh.
+    // bge-m3 por defecto, no nomic-embed-text. Medido sobre el corpus real con
+    // preguntas reales en español: el hit@5 del semántico solo pasó de 2/6 a
+    // 4/6, y la pregunta que motivó la búsqueda híbrida saltó del puesto 146 al
+    // 3. Importa más de lo que parece: con nomic la mitad semántica era peso
+    // muerto y BM25 solo le ganaba a la híbrida, así que la fusión pagaba una
+    // complejidad que nunca se ganó. Cuesta 2.3x más por chunk, y eso lo paga
+    // solo un reindexado en frío: el caché de embeddings absorbe cada refresh
+    // en caliente.
     model: readEnv('REPO_RAG_EMBED_MODEL', 'bge-m3')
   });
 

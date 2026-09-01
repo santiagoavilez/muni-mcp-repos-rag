@@ -64,11 +64,12 @@ export function registerSearchProjectDocs(server: McpServer, context: ServerCont
           );
         }
 
-        // An index built with another embedding model must refuse to answer,
-        // not answer wrong: two models can agree on the dimension count, so
-        // the dimension guard inside search would happily score one model's
-        // vectors against the other's query and every result would be quietly
-        // broken. Auto-index normally rebuilds this, but it can be disabled.
+        // Un índice construido con otro modelo de embeddings tiene que negarse a
+        // contestar, no contestar mal: dos modelos pueden coincidir en cantidad de
+        // dimensiones, así que el guard por dimensiones dentro de search puntuaría
+        // tan campante los vectores de un modelo contra la consulta del otro y
+        // cada resultado quedaría roto en silencio. Normalmente el auto-index
+        // reconstruye esto, pero se puede desactivar.
         const stale = context.store
           .indexedModels(target?.fullName)
           .find(model => model !== context.embeddings.model);
@@ -80,8 +81,8 @@ export function registerSearchProjectDocs(server: McpServer, context: ServerCont
         }
 
         const embedding = await context.embeddings.embedQuery(query);
-        // The raw text goes in too: the keyword half needs the actual words,
-        // which the embedding has already thrown away.
+        // El texto crudo también entra: la mitad por palabra clave necesita las
+        // palabras en sí, que el embedding ya descartó.
         const hits = context.store.search(embedding, limit ?? 5, scope, query);
 
         return ok({
@@ -97,15 +98,16 @@ export function registerSearchProjectDocs(server: McpServer, context: ServerCont
             branches: hit.branches,
             path: hit.path,
             heading: hit.heading,
-            // `matched_by: "both"` means the exact words appear in the text,
-            // which is a much stronger claim than semantic proximity alone.
+            // `matched_by: "both"` significa que las palabras exactas aparecen en
+            // el texto, que es una afirmación mucho más fuerte que la sola
+            // proximidad semántica.
             matched_by: hit.matched_by,
             score: Number(hit.score.toFixed(5)),
             semantic_score: Number(hit.semantic_score.toFixed(4)),
             indexed_at: hit.indexed_at,
             content: hit.content
           })),
-          // Said plainly so the agent explains the gap instead of inventing one.
+          // Dicho sin vueltas para que el agente explique el hueco en vez de inventar uno.
           note:
             hits.length === 0
               ? 'Nothing matched. The docs may not cover this, or the index may be stale — ' +
@@ -119,9 +121,10 @@ export function registerSearchProjectDocs(server: McpServer, context: ServerCont
 }
 
 /**
- * An empty scope is nearly always a missing reindex, but "which branch did you
- * mean" is a different mistake with a different fix — so the message names the
- * branches that ARE indexed instead of blaming refresh_index for both.
+ * Un alcance vacío es casi siempre un reindexado que falta, pero "qué rama
+ * quisiste decir" es otro error con otra solución, así que el mensaje nombra las
+ * ramas que SÍ están indexadas en vez de echarle la culpa a refresh_index en los
+ * dos casos.
  */
 function describeEmptyScope(
   context: ServerContext,
@@ -132,10 +135,11 @@ function describeEmptyScope(
   if (repo === undefined) {
     const allBranches = [...new Set(context.store.stats().map(entry => entry.branch))];
 
-    // Nothing indexed anywhere is a real "run refresh_index"; a `branch` that
-    // simply isn't among the ones that DO exist is a different mistake with a
-    // different fix, so it gets the same branch-listing treatment as the
-    // single-repo case below instead of the misleading "index is empty".
+    // Que no haya nada indexado en ningún lado sí amerita un "corré
+    // refresh_index"; una `branch` que simplemente no está entre las que SÍ
+    // existen es otro error con otra solución, así que recibe el mismo trato de
+    // listar ramas que el caso de un solo repo de más abajo, en vez del engañoso
+    // "el índice está vacío".
     if (allBranches.length === 0) {
       return 'The documentation index is empty. Run refresh_index first.';
     }

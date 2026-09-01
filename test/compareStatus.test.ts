@@ -22,18 +22,19 @@ import { registerCompareStatus, wholeDaysSince } from '../src/tools/compareStatu
 import { FIXTURES, FakeEmbeddingProvider, tempDbPath, testConfig } from './fixtures.js';
 
 interface InstrumentOptions {
-  /** Aliases whose status call must blow up, to exercise partial failure. */
+  /** Alias cuya llamada de status tiene que explotar, para ejercitar el fallo parcial. */
   failing?: string[];
-  /** Aliases whose reported last_activity is forced to null. */
+  /** Alias cuyo last_activity reportado se fuerza a null. */
   nullActivity?: string[];
-  /** Milliseconds each status call takes, so overlap is observable. */
+  /** Milisegundos que tarda cada llamada de status, para que el solapamiento sea observable. */
   delayMs?: number;
 }
 
 /**
- * Wraps the in-memory GitHub client to record how many status calls overlap.
- * Concurrency is only observable from the outside as calls that were in flight
- * at the same time, so the mock has to keep the receipts itself.
+ * Envuelve el cliente de GitHub en memoria para registrar cuántas llamadas de
+ * status se solapan. Desde afuera la concurrencia solo se observa como llamadas
+ * que estuvieron en vuelo al mismo tiempo, así que el mock tiene que guardar los
+ * comprobantes él mismo.
  */
 class InstrumentedGitHub implements GitHubClient {
   maxInFlight = 0;
@@ -179,8 +180,8 @@ test('compare_status is registered, read-only and explains when to use it', asyn
   assert.ok(tool, 'compare_status must be registered');
   assert.equal(tool.annotations?.readOnlyHint, true);
   assert.ok((tool.description ?? '').length > 80);
-  // The description is the routing logic: it has to name the tools it is
-  // confused with, or the model will keep calling those instead.
+  // La descripción es la lógica de ruteo: tiene que nombrar las tools con las
+  // que se la confunde, o el modelo va a seguir llamando a esas en su lugar.
   assert.match(tool.description ?? '', /get_project_status/);
   assert.match(tool.description ?? '', /list_projects/);
 
@@ -258,7 +259,7 @@ test('results are sorted by most recent activity, nulls last', async () => {
 
   const { payload } = await compare(harness);
 
-  // turnos pushed 2026-02-01, tramites 2026-01-15, quieto never.
+  // turnos hizo push el 2026-02-01, tramites el 2026-01-15, quieto nunca.
   assert.deepEqual(
     payload.projects.map(project => project.alias),
     ['turnos', 'tramites', 'quieto']
@@ -277,8 +278,8 @@ test('a repo with no commits yields null day counts, never NaN', async () => {
   assert.equal(tramites.days_of_work_off_default_branch, null);
   assert.equal(typeof tramites.days_since_any_activity, 'number');
 
-  // JSON serialises NaN as null, so the boundary cannot tell them apart: the
-  // arithmetic itself has to be asserted directly.
+  // JSON serializa NaN como null, así que en el borde no se los puede
+  // distinguir: hay que afirmar directamente sobre la aritmética en sí.
   assert.equal(wholeDaysSince(null, Date.now()), null);
   assert.equal(wholeDaysSince('no-es-una-fecha', Date.now()), null);
   assert.equal(wholeDaysSince('2026-02-01T12:00:00Z', Date.parse('2026-02-04T12:00:00Z')), 3);
@@ -347,7 +348,7 @@ test('summary counts match the projects and failed arrays', async () => {
   assert.equal(payload.summary.failed, payload.failed.length);
   assert.equal(payload.summary.succeeded, 2);
   assert.equal(payload.summary.failed, 1);
-  // turnos has 2 open PRs and 5 open issues, tramites 0 and 1.
+  // turnos tiene 2 PRs abiertos y 5 issues abiertos; tramites, 0 y 1.
   assert.equal(payload.summary.total_open_pull_requests, 2);
   assert.equal(payload.summary.total_open_issues, 6);
 

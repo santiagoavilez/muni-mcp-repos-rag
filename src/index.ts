@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  // stdout is the MCP channel — every log must go to stderr.
+  // stdout es el canal MCP: todo log tiene que ir a stderr.
   console.error(`repo-rag MCP server running on stdio — ${context.label}`);
   if (hasPlaceholders(context.config)) {
     console.error(
@@ -47,15 +47,16 @@ async function main(): Promise<void> {
     );
   }
 
-  // Deliberately NOT awaited. The MCP handshake is already done by this point
-  // and must not wait for GitHub and Ollama: the tools keep answering from the
-  // existing — possibly stale — index while this runs, and the index is simply
-  // fresher a little later. Awaiting it would hang the client for minutes on a
-  // cold start, which is exactly what the background placement avoids.
+  // A propósito SIN await. El handshake MCP ya terminó en este punto y no puede
+  // quedar esperando a GitHub y a Ollama: las tools siguen contestando desde el
+  // índice que ya existe — posiblemente vencido — mientras esto corre, y el
+  // índice simplemente queda más fresco un rato después. Esperarlo dejaría al
+  // cliente colgado durante minutos en un arranque en frío, que es exactamente
+  // lo que evita mandarlo al segundo plano.
   void scheduleStartupRefresh(context).catch(error => {
-    // The scheduler already swallows its own failures; this is the last net, so
-    // an unexpected rejection cannot become an unhandled one and kill a server
-    // that is otherwise perfectly able to answer.
+    // El scheduler ya se traga sus propias fallas; esta es la última red, para
+    // que un rechazo inesperado no se convierta en uno no manejado y mate a un
+    // server que por lo demás está perfectamente en condiciones de contestar.
     console.error('[auto-index] unexpected failure:', error);
   });
 }

@@ -58,7 +58,7 @@ export function registerGetProjectSummary(server: McpServer, context: ServerCont
   );
 }
 
-/** README casing is not standardised across repos, so a few spellings are tried. */
+/** El uso de mayúsculas en README no está estandarizado entre repos, así que se prueban varias formas. */
 async function readReadme(
   context: ServerContext,
   alias: string

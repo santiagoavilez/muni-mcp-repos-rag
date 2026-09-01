@@ -21,8 +21,8 @@ test('normalizeVector yields a unit vector and leaves a zero vector alone', () =
 
 test('a corrupt index.db is quarantined instead of taking the server down', () => {
   const dbPath = tempDbPath();
-  // Same failure a truncated copy or a disk-full write leaves behind: a file
-  // that exists but is not a SQLite database at all.
+  // La misma falla que deja una copia truncada o una escritura con el disco
+  // lleno: un archivo que existe pero que directamente no es una base SQLite.
   writeFileSync(dbPath, 'not a sqlite file');
 
   const store = new VectorStore(dbPath);
@@ -96,7 +96,7 @@ test('a repo that fails to index does not abort the others', async () => {
   const store = new VectorStore(tempDbPath());
   const config = testConfig();
   const github = testGitHub();
-  // Break exactly one repo, the way an unreachable GitHub would.
+  // Se rompe exactamente un repo, tal como lo haría un GitHub inalcanzable.
   const broken = {
     listTree: github.listTree.bind(github),
     listBranches: github.listBranches.bind(github),
@@ -121,7 +121,7 @@ test('a repo that fails to index does not abort the others', async () => {
 
   assert.equal(turnos.error, null);
   assert.ok(turnos.chunks > 0);
-  // The failure is reported per file, and the repo still completes with 0 chunks.
+  // La falla se reporta por archivo, y el repo igual termina con 0 chunks.
   assert.equal(tramites.chunks, 0);
   assert.ok(
     tramites.branches.some(branch =>

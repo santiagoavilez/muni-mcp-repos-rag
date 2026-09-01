@@ -1,10 +1,10 @@
 /**
- * Domain errors. Anything thrown from these classes is turned into a readable
- * tool error by `tools/shared.ts#guard`, so the agent can correct itself and
- * retry instead of seeing a transport-level crash.
+ * Errores de dominio. Todo lo que se lance desde estas clases lo convierte
+ * `tools/shared.ts#guard` en un tool error legible, para que el agente se
+ * corrija solo y reintente en vez de ver un crash a nivel de transporte.
  */
 
-/** A repo, file or path that does not exist (or the token cannot see it). */
+/** Un repo, archivo o ruta que no existe (o que el token no puede ver). */
 export class NotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -12,7 +12,7 @@ export class NotFoundError extends Error {
   }
 }
 
-/** Input the caller can fix: unknown alias, empty query, bad path. */
+/** Entrada que el llamador puede corregir: alias desconocido, query vacía, ruta inválida. */
 export class ValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -20,7 +20,7 @@ export class ValidationError extends Error {
   }
 }
 
-/** GitHub secondary/primary rate limit. Carries the reset time when GitHub sends one. */
+/** Rate limit primario o secundario de GitHub. Lleva la hora de reset cuando GitHub la manda. */
 export class RateLimitError extends Error {
   readonly resetAt: Date | null;
 
@@ -31,7 +31,7 @@ export class RateLimitError extends Error {
   }
 }
 
-/** The token exists but lacks the permission the call needs. */
+/** El token existe pero no tiene el permiso que la llamada necesita. */
 export class PermissionError extends Error {
   constructor(message: string) {
     super(message);
@@ -39,7 +39,7 @@ export class PermissionError extends Error {
   }
 }
 
-/** Ollama is unreachable, the model is missing, or it answered something unusable. */
+/** Ollama no responde, falta el modelo, o contestó algo inservible. */
 export class EmbeddingsUnavailableError extends Error {
   constructor(message: string) {
     super(message);
@@ -47,7 +47,7 @@ export class EmbeddingsUnavailableError extends Error {
   }
 }
 
-/** The index is empty or missing for the requested scope — the fix is refresh_index. */
+/** El índice está vacío o no existe para el alcance pedido; se arregla con refresh_index. */
 export class IndexEmptyError extends Error {
   constructor(message: string) {
     super(message);
@@ -55,7 +55,7 @@ export class IndexEmptyError extends Error {
   }
 }
 
-/** Errors whose message is safe and useful to hand back to the agent verbatim. */
+/** Errores cuyo mensaje es seguro y útil para devolverle al agente tal cual. */
 export const DOMAIN_ERRORS = [
   NotFoundError,
   ValidationError,

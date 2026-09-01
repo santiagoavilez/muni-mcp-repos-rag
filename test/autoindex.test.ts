@@ -9,12 +9,12 @@ import { IndexStats, VectorStore } from '../src/rag/store.js';
 import { FakeEmbeddingProvider, tempDbPath, testConfig, testGitHub } from './fixtures.js';
 
 const NOW = new Date('2026-08-29T12:00:00.000Z');
-/** The model the fixtures' FakeEmbeddingProvider reports. */
+/** El modelo que reporta el FakeEmbeddingProvider de los fixtures. */
 const MODEL = 'fake-test-model';
 const TURNOS = 'example-org/turnos';
 const TRAMITES = 'example-org/tramites';
 
-/** Hours before NOW, as the ISO string the store would have written. */
+/** Horas antes de NOW, como el string ISO que habría escrito el store. */
 function hoursAgo(hours: number): string {
   return new Date(NOW.getTime() - hours * 60 * 60 * 1000).toISOString();
 }
@@ -30,8 +30,9 @@ function aliases(repos: ConfiguredRepo[]): string[] {
 const REPOS = testConfig().all;
 
 test('a max age of zero disables staleness entirely', () => {
-  // Not even a repo that was never indexed counts: 0 means the feature is off,
-  // and an "off" switch that still triggers a full reindex is not off.
+  // Ni siquiera cuenta un repo que nunca se indexó: 0 significa que la
+  // funcionalidad está apagada, y un interruptor "apagado" que igual dispara un
+  // reindexado completo no está apagado.
   assert.deepEqual(selectStaleRepos(REPOS, [], 0, NOW, MODEL), []);
   assert.deepEqual(selectStaleRepos(REPOS, [], -1, NOW, MODEL), []);
 });
@@ -69,9 +70,10 @@ test('an unparseable indexed_at counts as stale', () => {
 });
 
 test('a recent run made with another embedding model still counts as stale', () => {
-  // Not merely old: an index built by another model answers queries with the
-  // wrong vectors, and a matching dimension count hides it at query time. Only
-  // runs made with the CURRENT model can vouch for freshness.
+  // No es solamente viejo: un índice construido por otro modelo responde las
+  // consultas con los vectores equivocados, y que coincida la cantidad de
+  // dimensiones lo esconde al consultar. Solo las corridas hechas con el modelo
+  // ACTUAL pueden certificar la frescura.
   const stats = [
     run('main', TURNOS, hoursAgo(1), 'some-other-model'),
     run('main', TRAMITES, hoursAgo(1))
@@ -80,7 +82,7 @@ test('a recent run made with another embedding model still counts as stale', () 
   assert.deepEqual(aliases(selectStaleRepos(REPOS, stats, 12, NOW, MODEL)), ['turnos']);
 });
 
-/** Counts the branch listings, which is exactly one per repo per real run. */
+/** Cuenta los listados de ramas, que son exactamente uno por repo por corrida real. */
 function countingGitHub(): { github: GitHubClient; listings: () => number } {
   const github = testGitHub();
   let listings = 0;
@@ -114,8 +116,8 @@ test('a failed run releases the guard instead of poisoning every later refresh',
   const indexer = new Indexer(testConfig(), github, embeddings, store);
 
   await assert.rejects(() => indexer.refresh('does-not-exist'));
-  // Twice on purpose: a rejected promise parked under this scope would be
-  // handed back forever, and from the outside that looks identical.
+  // Dos veces a propósito: una promesa rechazada estacionada bajo este alcance
+  // se devolvería para siempre, y desde afuera eso se ve idéntico.
   await assert.rejects(() => indexer.refresh('does-not-exist'));
 
   const report = await indexer.refresh('turnos');
@@ -127,7 +129,7 @@ test('a failed run releases the guard instead of poisoning every later refresh',
   store.close();
 });
 
-/** A context stub: the scheduler must not need a database or a network. */
+/** Un stub de contexto: el scheduler no debe necesitar ni base de datos ni red. */
 function stubContext(
   stats: IndexStats[],
   refresh: (reference?: string) => Promise<IndexReport>
@@ -173,8 +175,8 @@ test('one failing repo neither throws out of the scheduler nor stops the next on
 });
 
 /**
- * Captures stderr for the duration of `body`. The scheduler reports everything
- * it does through console.error, so that IS its observable behaviour.
+ * Captura stderr mientras dura `body`. El scheduler reporta todo lo que hace por
+ * console.error, así que eso ES su comportamiento observable.
  */
 async function captureStderr(body: () => Promise<void>): Promise<string> {
   const original = console.error;
@@ -189,9 +191,10 @@ async function captureStderr(body: () => Promise<void>): Promise<string> {
 }
 
 test('a branch-level failure is named in the log, not reported as an empty success', async () => {
-  // The likeliest startup failure by far: Ollama is not up yet. Every branch
-  // fails while the REPO succeeds, so a summary that only looks at repo errors
-  // prints "0 files, 0 chunks" and looks like a repo that simply has no docs.
+  // La falla de arranque más probable por lejos: Ollama todavía no está
+  // levantado. Fallan todas las ramas mientras el REPO sale bien, así que un
+  // resumen que solo mira los errores de repo imprime "0 files, 0 chunks" y
+  // parece un repo que simplemente no tiene documentación.
   const report: IndexReport = {
     model: 'fake-test-model',
     results: [

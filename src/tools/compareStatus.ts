@@ -9,28 +9,29 @@ import { ok, guard } from './shared.js';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * How many repos may have their status fetched at the same time.
+ * Cuántos repos pueden estar pidiendo su estado al mismo tiempo.
  *
- * getProjectStatus already issues FOUR GitHub calls per repo in parallel
- * (meta, last commit, open pulls, open issues), so an unbounded fan-out over N
- * repos means 4N simultaneous requests. GitHub's secondary rate limits trigger
- * on concurrency, not only on volume, so comparing a dozen repos would start
- * getting throttled precisely when the whole point of the tool is one cheap
- * call. Four repos in flight is sixteen requests: fast enough to feel like a
- * single call, low enough to stay well inside the limit.
+ * getProjectStatus ya dispara CUATRO llamadas a GitHub por repo en paralelo
+ * (meta, último commit, pulls abiertos, issues abiertos), así que un fan-out sin
+ * límite sobre N repos son 4N requests simultáneos. Los rate limits secundarios
+ * de GitHub se disparan por concurrencia, no solo por volumen, así que comparar
+ * una docena de repos empezaría a ser frenado justo cuando todo el sentido de la
+ * tool es una sola llamada barata. Cuatro repos en vuelo son dieciséis requests:
+ * lo bastante rápido para sentirse como una única llamada, lo bastante bajo para
+ * quedar cómodamente dentro del límite.
  */
 const MAX_REPOS_IN_FLIGHT = 4;
 
 interface ComparedProject extends ProjectStatus {
-  /** Whole days from the last commit on the default branch to `now`. */
+  /** Días enteros desde el último commit en la rama default hasta `now`. */
   days_since_default_branch_commit: number | null;
-  /** Whole days from the last push on ANY branch to `now`. */
+  /** Días enteros desde el último push en CUALQUIER rama hasta `now`. */
   days_since_any_activity: number | null;
   /**
-   * The gap between the two: how long work has been landing somewhere other
-   * than the default branch. Deliberately a number and not a boolean — the
-   * threshold that makes it worrying depends on the project, so the tool
-   * reports the fact and the description tells the agent how to read it.
+   * La brecha entre los dos: hace cuánto que el trabajo viene cayendo en algún
+   * lado que no es la rama default. A propósito es un número y no un booleano: el
+   * umbral a partir del cual preocupa depende del proyecto, así que la tool
+   * reporta el hecho y la descripción le dice al agente cómo leerlo.
    */
   days_of_work_off_default_branch: number | null;
 }
@@ -71,10 +72,9 @@ export function registerCompareStatus(server: McpServer, context: ServerContext)
     },
     async ({ repos }) =>
       guard(async () => {
-        // Resolution happens before any network call so an unknown alias is
-        // reported as its own failure instead of taking the whole comparison
-        // down with it — the caller usually typed one name wrong, not all of
-        // them.
+        // La resolución ocurre antes de cualquier llamada de red, así un alias
+        // desconocido se reporta como falla propia en vez de llevarse puesta toda
+        // la comparación: normalmente el llamador escribió mal un nombre, no todos.
         const requested = repos ?? context.config.all.map(repo => repo.alias);
         const targets: { reference: string; target: ConfiguredRepo }[] = [];
         const failed: FailedRepo[] = [];
@@ -87,8 +87,8 @@ export function registerCompareStatus(server: McpServer, context: ServerContext)
           }
         }
 
-        // Captured once, before the fetches, so every "days since" in the
-        // response is measured from the same instant.
+        // Se captura una sola vez, antes de los pedidos, para que todos los
+        // "días desde" de la respuesta se midan desde el mismo instante.
         const checkedAt = new Date();
         const now = checkedAt.getTime();
 
@@ -97,7 +97,7 @@ export function registerCompareStatus(server: McpServer, context: ServerContext)
             const status = await context.github.getProjectStatus(entry.target);
             return { project: derive(status, now), failure: null };
           } catch (error) {
-            // One unreachable repo must not hide the state of the rest.
+            // Un repo inalcanzable no puede tapar el estado de los demás.
             return {
               project: null,
               failure: { repo: entry.reference, error: describe(error) }
@@ -111,13 +111,13 @@ export function registerCompareStatus(server: McpServer, context: ServerContext)
           else if (outcome.failure) failed.push(outcome.failure);
         }
 
-        // The tool exists to compare, so the order has to mean something:
-        // busiest first, and repos with no recorded activity at the end.
+        // La tool existe para comparar, así que el orden tiene que significar
+        // algo: primero los más movidos, y al final los repos sin actividad registrada.
         projects.sort((a, b) => rank(b.last_activity) - rank(a.last_activity));
 
         return ok({
-          // "Days since" bakes in the moment of the reading. Without this a
-          // stale answer quoted later is indistinguishable from a fresh one.
+          // Los "días desde" llevan incorporado el momento de la lectura. Sin
+          // esto, una respuesta vieja citada más tarde es indistinguible de una fresca.
           checked_at: checkedAt.toISOString(),
           projects,
           failed,
@@ -147,22 +147,22 @@ function derive(status: ProjectStatus, now: number): ComparedProject {
     days_of_work_off_default_branch:
       sinceCommit === null || sinceActivity === null
         ? null
-        : // Clamped: a default-branch commit newer than the recorded push is
-          // not "negative work off the branch", it is simply none. GitHub's
-          // pushed_at can also lag a commit by seconds.
+        : // Acotado: un commit en la rama default más nuevo que el push
+          // registrado no es "trabajo negativo fuera de la rama", simplemente es
+          // nada. Además el pushed_at de GitHub puede ir unos segundos atrás del commit.
           Math.max(0, sinceCommit - sinceActivity)
   };
 }
 
 /**
- * Whole days from an ISO timestamp to `now`, or null when there is no date or
- * it cannot be parsed. Returning null rather than NaN matters: NaN survives
- * arithmetic silently and serialises to `null` anyway, so a bad date would
- * reach the agent looking exactly like a missing one but only after
- * contaminating every number derived from it.
+ * Días enteros desde un timestamp ISO hasta `now`, o null cuando no hay fecha o
+ * no se puede parsear. Devolver null en vez de NaN importa: NaN sobrevive a la
+ * aritmética en silencio y de todos modos se serializa como `null`, así que una
+ * fecha mala le llegaría al agente con el mismo aspecto que una faltante, pero
+ * recién después de contaminar cada número derivado de ella.
  *
- * Exported for the tests, which is the only place the difference between null
- * and NaN is still observable — JSON.stringify flattens both to `null`.
+ * Se exporta para los tests, que son el único lugar donde la diferencia entre
+ * null y NaN sigue siendo observable: JSON.stringify aplana los dos a `null`.
  */
 export function wholeDaysSince(iso: string | null, now: number): number | null {
   if (iso === null) return null;
@@ -171,7 +171,7 @@ export function wholeDaysSince(iso: string | null, now: number): number | null {
   return Math.max(0, Math.floor((now - then) / MS_PER_DAY));
 }
 
-/** Sort key for `last_activity`: unknown activity ranks below any known date. */
+/** Clave de orden para `last_activity`: la actividad desconocida queda por debajo de cualquier fecha conocida. */
 function rank(iso: string | null): number {
   if (iso === null) return Number.NEGATIVE_INFINITY;
   const parsed = Date.parse(iso);

@@ -4,19 +4,19 @@ import { test } from 'node:test';
 import { fromProjectRoot } from '../src/core/paths.js';
 
 /**
- * Guards the one failure the rest of the suite cannot see.
+ * Cubre la única falla que el resto de la suite no puede ver.
  *
- * Every other tool test builds its OWN McpServer and calls the register
- * functions by hand, which is what makes those tests fast and network-free —
- * but it also means nothing exercises `src/index.ts`. Forget the wiring line
- * there and the whole suite still passes while the tool simply does not exist
- * at runtime, which is the worst shape a bug can take: invisible in CI and
- * total in production.
+ * Todos los demás tests de tools arman su PROPIO McpServer y llaman a mano a las
+ * funciones de registro, que es lo que los hace rápidos y sin red, pero también
+ * significa que nada ejercita `src/index.ts`. Si se olvida ahí la línea de
+ * cableado, toda la suite igual pasa mientras la tool simplemente no existe en
+ * runtime, que es la peor forma que puede tomar un bug: invisible en CI y total
+ * en producción.
  *
- * `src/index.ts` cannot just be imported to check: it loads the env, builds the
- * real context (which demands a GITHUB_TOKEN) and connects a stdio transport at
- * module level. So the check is static — read the file and confirm every
- * register function a tool exports is actually called there.
+ * `src/index.ts` no se puede importar y ya para chequearlo: carga el entorno,
+ * construye el contexto real (que exige un GITHUB_TOKEN) y conecta un transporte
+ * stdio a nivel de módulo. Por eso el chequeo es estático: se lee el archivo y se
+ * confirma que cada función de registro que exporta una tool se llame realmente ahí.
  */
 test('every tool exported under src/tools is registered in src/index.ts', () => {
   const entry = readFileSync(fromProjectRoot('src/index.ts'), 'utf8');

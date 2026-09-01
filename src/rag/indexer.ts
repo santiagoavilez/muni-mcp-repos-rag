@@ -15,15 +15,16 @@ export interface BranchIndexResult {
   branch: string;
   files: number;
   chunks: number;
-  /** Distinct texts the provider had to embed on this run. */
+  /** Textos distintos que el proveedor tuvo que embeber en esta corrida. */
   embedded_chunks: number;
   /**
-   * Distinct texts answered from the embedding cache. Counted per text, not
-   * per chunk: the point of the number is how much work the provider was
-   * spared, and one cached vector serves every chunk that repeats that text.
+   * Textos distintos respondidos desde el caché de embeddings. Se cuentan por
+   * texto y no por chunk: el sentido del número es cuánto trabajo se le ahorró al
+   * proveedor, y un solo vector cacheado sirve a todos los chunks que repiten ese
+   * texto.
    */
   reused_chunks: number;
-  /** True when the branch was picked up by the recent-activity window. */
+  /** True cuando la rama entró por la ventana de actividad reciente. */
   active: boolean;
   skipped: string[];
   error: string | null;
@@ -37,7 +38,7 @@ export interface RepoIndexResult {
   chunks: number;
   embedded_chunks: number;
   reused_chunks: number;
-  /** Configured branches that do not exist in this repo. Not an error. */
+  /** Ramas configuradas que no existen en este repo. No es un error. */
   missing_branches: string[];
   pruned_branches: number;
   error: string | null;
@@ -49,22 +50,22 @@ export interface IndexReport {
   indexed_at: string;
 }
 
-/** How many chunks are embedded per Ollama round trip. */
+/** Cuántos chunks se embeben por viaje a Ollama. */
 const EMBED_BATCH_SIZE = 16;
 
-/** Anything past this is a data dump, not documentation. */
+/** Cualquier cosa más grande que esto es un volcado de datos, no documentación. */
 const MAX_DOC_BYTES = 300_000;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Single-flight key for a refresh of every configured repo. The angle brackets
- * are illegal in an alias, a repo name and an "owner/repo", so this sentinel
- * can never be confused with a real scope.
+ * Clave de single-flight para un refresh de todos los repos configurados. Los
+ * signos de menor y mayor son ilegales en un alias, en un nombre de repo y en un
+ * "owner/repo", así que este centinela nunca se puede confundir con un alcance real.
  */
 const ALL_REPOS = '<all-repos>';
 
-/** Per-branch tally of how much of the work the cache took off the provider. */
+/** Conteo por rama de cuánto del trabajo le sacó el caché al proveedor. */
 interface EmbedCounters {
   embedded: number;
   reused: number;
@@ -78,32 +79,32 @@ export class Indexer {
     private readonly store: VectorStore
   ) {}
 
-  /** Refreshes already running, by scope. See `refresh`. */
+  /** Refreshes ya en curso, por alcance. Ver `refresh`. */
   private readonly inFlight = new Map<string, Promise<IndexReport>>();
 
   /**
-   * Tail of the serialised queue. Always a settled-or-pending promise that
-   * NEVER rejects, so one failed refresh cannot stall the ones behind it.
+   * Cola serializada. Siempre es una promesa resuelta o pendiente que NUNCA
+   * rechaza, así un refresh fallido no puede trabar a los que vienen atrás.
    */
   private queue: Promise<void> = Promise.resolve();
 
   /**
-   * Reindexes one repo, or every configured repo when `reference` is omitted.
+   * Reindexa un repo, o todos los configurados cuando se omite `reference`.
    *
-   * One repo failing does NOT abort the run: the failure is reported per repo
-   * and the others still get indexed, because a single unreachable repo should
-   * not leave the user with no index at all. The same holds per branch.
+   * Que un repo falle NO aborta la corrida: la falla se reporta por repo y los
+   * demás igual se indexan, porque un solo repo inalcanzable no debería dejar al
+   * usuario sin ningún índice. Lo mismo vale por rama.
    *
-   * Only one refresh ever executes at a time, and a second caller asking for a
-   * scope that is already running joins it instead of starting a duplicate —
-   * it gets the very same IndexReport rather than an error, because from its
-   * point of view the work it asked for did happen.
+   * Nunca se ejecuta más de un refresh a la vez, y un segundo llamador que pida
+   * un alcance que ya está corriendo se suma a ese en vez de arrancar un
+   * duplicado: recibe exactamente el mismo IndexReport en lugar de un error,
+   * porque desde su punto de vista el trabajo que pidió sí ocurrió.
    *
-   * The guard lives HERE and not in whatever schedules a refresh: the startup
-   * scheduler, the refresh_index tool and `pnpm reindex` all arrive through
-   * this method, so a guard placed in any one of them is bypassed by the other
-   * two — and two concurrent runs mean double the GitHub requests, double the
-   * Ollama load, and two transactions rewriting the same branch.
+   * El guard vive ACÁ y no en lo que programa un refresh: el scheduler de
+   * arranque, la tool refresh_index y `pnpm reindex` entran todos por este
+   * método, así que un guard puesto en cualquiera de ellos lo esquivan los otros
+   * dos, y dos corridas concurrentes significan el doble de requests a GitHub, el
+   * doble de carga en Ollama, y dos transacciones reescribiendo la misma rama.
    */
   async refresh(reference?: string): Promise<IndexReport> {
     const scope = reference ?? ALL_REPOS;
@@ -112,17 +113,18 @@ export class Indexer {
     if (running) return running;
 
     const started = this.queue.then(() => this.runRefresh(reference));
-    // Cleared in `finally`, on success AND on failure: a rejected promise left
-    // parked under this scope would be handed to every later caller forever,
-    // so one failed run would permanently disable refreshing that repo.
+    // Se limpia en `finally`, tanto al salir bien COMO al fallar: una promesa
+    // rechazada que quedara estacionada bajo este alcance se le entregaría para
+    // siempre a todo llamador posterior, así que una sola corrida fallida
+    // desactivaría de forma permanente el refresh de ese repo.
     const tracked = started.finally(() => {
       if (this.inFlight.get(scope) === tracked) this.inFlight.delete(scope);
     });
 
     this.inFlight.set(scope, tracked);
-    // The failure is already delivered to whoever awaited `tracked`; the queue
-    // only orders the runs, so it swallows it rather than propagating it to an
-    // unrelated refresh (and rather than becoming an unhandled rejection).
+    // La falla ya se le entregó a quien haya esperado `tracked`; la cola solo
+    // ordena las corridas, así que se la traga en vez de propagarla a un refresh
+    // que no tiene nada que ver (y en vez de volverse un rechazo no manejado).
     this.queue = tracked.then(
       () => undefined,
       () => undefined
@@ -144,10 +146,10 @@ export class Indexer {
           failedRepoResult(target, error instanceof Error ? error.message : String(error))
         );
 
-        // A rate limit is a global failure, not a per-repo one: every repo
-        // still in the queue draws on the same exhausted quota, so continuing
-        // burns doomed requests straight into GitHub's abuse detection. The
-        // rest of the run is reported as skipped instead of attempted.
+        // Un rate limit es una falla global, no por repo: todo repo que siga en
+        // la cola tira de la misma cuota agotada, así que seguir quema requests
+        // condenados de antemano contra la detección de abuso de GitHub. El resto
+        // de la corrida se reporta como salteada en vez de intentarla.
         if (error instanceof RateLimitError) {
           const detail =
             'skipped: GitHub rate limit exhausted' +
@@ -171,8 +173,8 @@ export class Indexer {
       try {
         branches.push(await this.refreshBranch(target, branch.name, branch.active));
       } catch (error) {
-        // Not a per-branch failure: the next branch's requests hit the same
-        // exhausted quota. Let runRefresh abort the whole run.
+        // No es una falla por rama: los requests de la rama siguiente pegan
+        // contra la misma cuota agotada. Se deja que runRefresh aborte toda la corrida.
         if (error instanceof RateLimitError) throw error;
         branches.push({
           branch: branch.name,
@@ -205,15 +207,15 @@ export class Indexer {
   }
 
   /**
-   * Decides which branches to index.
+   * Decide qué ramas indexar.
    *
-   * Two sources, in this order:
-   *  1. The configured list (team convention: `main` for production, `dev` for
-   *     the replica). Configured branches that do not exist are reported, not
-   *     failed — one list has to work for every repo.
-   *  2. Optionally, branches pushed within `activeBranchDays`. Work in progress
-   *     lives on feature branches whose docs never reach `main`, and those are
-   *     exactly what people ask about.
+   * Dos fuentes, en este orden:
+   *  1. La lista configurada (convención del equipo: `main` para producción, `dev`
+   *     para la réplica). Las ramas configuradas que no existen se reportan, no
+   *     hacen fallar: una sola lista tiene que servir para todos los repos.
+   *  2. Opcionalmente, las ramas con push dentro de `activeBranchDays`. El
+   *     trabajo en curso vive en feature branches cuya documentación nunca llega
+   *     a `main`, y es justo eso lo que la gente pregunta.
    */
   private async planBranches(
     target: ConfiguredRepo
@@ -269,12 +271,12 @@ export class Indexer {
         }
         text = file.content;
       } catch (error) {
-        // A doc pattern naming a file that does not exist on this branch is
-        // normal (not every repo has NEGOCIO.md); anything else is worth
-        // surfacing but still not worth aborting the branch for. A rate limit
-        // is the exception: every remaining file costs a request against a
-        // quota that is already gone, so it aborts the run instead of turning
-        // into a hundred "skipped" lines.
+        // Que un patrón de documentos nombre un archivo que no existe en esta
+        // rama es normal (no todo repo tiene NEGOCIO.md); cualquier otra cosa
+        // vale la pena mostrarla, pero igual no vale la pena abortar la rama por
+        // ella. El rate limit es la excepción: cada archivo restante cuesta un
+        // request contra una cuota que ya no existe, así que aborta la corrida en
+        // vez de convertirse en cien líneas de "skipped".
         if (error instanceof NotFoundError) continue;
         if (error instanceof RateLimitError) throw error;
         skipped.push(`${path} (${error instanceof Error ? error.message : String(error)})`);
@@ -290,9 +292,10 @@ export class Indexer {
 
       chunks.forEach((chunk, offset) => {
         const embedding = vectors.get(hashes[offset]!);
-        // A provider that answered with fewer vectors than it was asked for
-        // leaves a chunk without one. Dropping that chunk keeps the rest of the
-        // file indexed, which beats failing the branch over one missing answer.
+        // Un proveedor que contestó con menos vectores de los que se le pidieron
+        // deja un chunk sin el suyo. Descartar ese chunk mantiene indexado el
+        // resto del archivo, que es mejor que hacer fallar la rama por una sola
+        // respuesta faltante.
         if (!embedding) return;
         records.push({
           repo: target.fullName,
@@ -328,18 +331,19 @@ export class Indexer {
   }
 
   /**
-   * Resolves one file's chunks to vectors, hitting the embedding cache first.
+   * Resuelve a vectores los chunks de un archivo, consultando primero el caché de
+   * embeddings.
    *
-   * The provider is the expensive part of a refresh by a wide margin, and most
-   * of what it is asked is text it has already seen: the same README on main,
-   * on dev and on every branch cut from them, unchanged since the last run.
-   * Measured on the real index, 2790 chunks per full refresh are only 767
-   * distinct texts — so the cache is consulted first and ONLY the misses are
-   * sent out, still in EMBED_BATCH_SIZE round trips.
+   * El proveedor es por lejos la parte cara de un refresh, y la mayoría de lo que
+   * se le pide es texto que ya vio: el mismo README en main, en dev y en cada
+   * rama cortada de ellas, sin cambios desde la corrida anterior. Medido sobre el
+   * índice real, los 2790 chunks de un refresh completo son apenas 767 textos
+   * distintos, así que primero se consulta el caché y SOLO se mandan los que
+   * faltan, igual en viajes de EMBED_BATCH_SIZE.
    *
-   * The result is keyed by content hash rather than by position, which also
-   * makes a text repeated inside one file a single request that both chunks
-   * read from.
+   * El resultado se indexa por hash de contenido y no por posición, lo que además
+   * convierte un texto repetido dentro de un mismo archivo en un único request
+   * del que leen los dos chunks.
    */
   private async embedChunks(
     texts: string[],
@@ -350,9 +354,9 @@ export class Indexer {
     const vectors = new Map(cached);
     const missingTexts: string[] = [];
 
-    // Deduplicated against the hits AND against itself, so a paragraph that
-    // appears twice inside one file is embedded once and both chunks read the
-    // same vector.
+    // Se deduplica contra los aciertos Y contra sí mismo, así un párrafo que
+    // aparece dos veces dentro de un archivo se embebe una sola vez y los dos
+    // chunks leen el mismo vector.
     const missing: string[] = [];
     const queued = new Set<string>();
     hashes.forEach((hash, offset) => {
@@ -370,8 +374,8 @@ export class Indexer {
 
       batch.forEach((_, offset) => {
         const embedding = computed[offset];
-        // A short answer from the provider leaves this hash unresolved; it is
-        // neither stored nor cached, and the chunk is skipped downstream.
+        // Una respuesta corta del proveedor deja este hash sin resolver: no se
+        // guarda ni se cachea, y el chunk se saltea más abajo.
         if (!embedding) return;
         const hash = missing[at + offset]!;
         vectors.set(hash, embedding);
@@ -381,8 +385,8 @@ export class Indexer {
 
     this.store.cacheEmbeddings(this.embeddings.model, fresh);
 
-    // Distinct texts on both sides, so the two add up to the requests a cold
-    // run would have made.
+    // Textos distintos de los dos lados, así la suma da los requests que habría
+    // hecho una corrida en frío.
     counters.embedded += fresh.length;
     counters.reused += cached.size;
 
@@ -390,11 +394,12 @@ export class Indexer {
   }
 
   /**
-   * Turns the configured doc patterns into concrete paths on one branch.
+   * Convierte los patrones de documentos configurados en rutas concretas de una
+   * rama.
    *
-   * Exact paths are trusted as written — a tree call would cost an extra
-   * request and the file may exist without appearing in a truncated tree. Only
-   * a glob ("docs/**") forces a tree listing.
+   * Las rutas exactas se toman tal como están escritas: pedir el árbol costaría
+   * un request extra y el archivo puede existir sin aparecer en un árbol
+   * truncado. Solo un glob ("docs/**") obliga a listar el árbol.
    */
   private async resolveDocPaths(target: ConfiguredRepo, branch: string): Promise<string[]> {
     const exact = target.docPatterns.filter(pattern => !isGlobPattern(pattern));
@@ -416,7 +421,7 @@ export class Indexer {
   }
 }
 
-/** Zero-counter result for a repo that failed or never got its turn. */
+/** Resultado en cero para un repo que falló o al que nunca le llegó el turno. */
 function failedRepoResult(target: ConfiguredRepo, message: string): RepoIndexResult {
   return {
     repo: target.fullName,

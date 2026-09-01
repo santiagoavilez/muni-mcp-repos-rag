@@ -2,7 +2,7 @@ import { ConfiguredRepo } from '../config/repos.js';
 
 export interface CommitSummary {
   sha: string;
-  /** First 7 characters of the sha — what a human actually quotes. */
+  /** Los primeros 7 caracteres del sha: lo que una persona realmente cita. */
   short_sha: string;
   author: string;
   date: string;
@@ -14,7 +14,7 @@ export interface RepoMeta {
   full_name: string;
   description: string | null;
   default_branch: string;
-  /** ISO timestamp of the last push. Null when the repo has never been pushed to. */
+  /** Timestamp ISO del último push. Null si el repo nunca recibió uno. */
   last_activity: string | null;
   html_url: string;
   private: boolean;
@@ -35,9 +35,9 @@ export interface ProjectStatus {
 export interface FileContent {
   repo: string;
   path: string;
-  /** Branch the content was read from. Null means the repo's default branch. */
+  /** Rama de la que se leyó el contenido. Null significa la rama default del repo. */
   branch: string | null;
-  /** UTF-8 text. Binary files are rejected before reaching here. */
+  /** Texto UTF-8. Los archivos binarios se rechazan antes de llegar acá. */
   content: string;
   size_bytes: number;
   sha: string;
@@ -52,25 +52,25 @@ export interface TreeEntry {
 
 export interface BranchSummary {
   name: string;
-  /** Head commit of the branch. */
+  /** Commit de cabecera de la rama. */
   sha: string;
-  /** ISO date of the head commit — how "active" the branch is. */
+  /** Fecha ISO del commit de cabecera: qué tan "activa" está la rama. */
   last_commit_date: string | null;
   is_default: boolean;
 }
 
 /**
- * Everything the tools need from GitHub, in one read-only interface.
- * Implemented by OctokitGitHubClient (real API) and MockGitHubClient (tests).
+ * Todo lo que las tools necesitan de GitHub, en una sola interfaz de solo lectura.
+ * La implementan OctokitGitHubClient (API real) y MockGitHubClient (tests).
  */
 export interface GitHubClient {
   getRepoMeta(target: ConfiguredRepo): Promise<RepoMeta>;
   getProjectStatus(target: ConfiguredRepo): Promise<ProjectStatus>;
   getRecentCommits(target: ConfiguredRepo, limit: number): Promise<CommitSummary[]>;
-  /** `ref` is a branch name; omitted means the default branch. */
+  /** `ref` es un nombre de rama; omitirlo significa la rama default. */
   getFileContent(target: ConfiguredRepo, path: string, ref?: string): Promise<FileContent>;
-  /** Full recursive file listing of one branch, used to expand doc globs. */
+  /** Listado recursivo completo de archivos de una rama, para expandir los globs de docs. */
   listTree(target: ConfiguredRepo, ref?: string): Promise<TreeEntry[]>;
-  /** Branches of the repo, newest commit first. */
+  /** Ramas del repo, de commit más nuevo a más viejo. */
   listBranches(target: ConfiguredRepo): Promise<BranchSummary[]>;
 }

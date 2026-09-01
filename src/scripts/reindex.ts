@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Standalone indexer: `pnpm reindex [alias]`.
+ * Indexador standalone: `pnpm reindex [alias]`.
  *
- * Same code path refresh_index uses, run from a terminal so the first index can
- * be built (and its progress watched) before the MCP client is ever wired up.
+ * El mismo camino de código que usa refresh_index, corrido desde una terminal
+ * para poder construir el primer índice (y ver su progreso) antes de siquiera
+ * cablear el cliente MCP.
  */
 import { buildContext } from '../context.js';
 import { loadEnvFile } from '../core/env.js';

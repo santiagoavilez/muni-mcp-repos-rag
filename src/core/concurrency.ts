@@ -1,13 +1,14 @@
 /**
- * Runs `run` over `items` with at most `limit` promises pending at a time,
- * preserving input order in the results. A handful of worker loops pulling
- * from a shared cursor is all this needs; adding a dependency for it would
- * cost more than the fifteen lines it replaces.
+ * Ejecuta `run` sobre `items` con como máximo `limit` promesas pendientes a la
+ * vez, preservando el orden de entrada en los resultados. Alcanza con un puñado
+ * de workers tirando de un cursor compartido; sumar una dependencia para esto
+ * costaría más que las quince líneas que reemplaza.
  *
- * The reason this exists at all is GitHub: its secondary rate limits trigger
- * on CONCURRENCY, not only on volume, so an unbounded Promise.all over N
- * targets starts getting throttled precisely when a caller fans out the most.
- * Callers cap the fan-out here instead of each rediscovering that the hard way.
+ * Esto existe por GitHub: sus rate limits secundarios se disparan por
+ * CONCURRENCIA, no solo por volumen, así que un Promise.all sin límite sobre N
+ * objetivos empieza a ser frenado justo cuando el llamador abre más el abanico.
+ * Los llamadores acotan el fan-out acá en vez de redescubrirlo cada uno por su
+ * cuenta.
  */
 export async function mapWithLimit<T, R>(
   items: T[],

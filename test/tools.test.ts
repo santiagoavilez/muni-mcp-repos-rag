@@ -99,8 +99,8 @@ test('every v1 tool is registered, and only refresh_index is not read-only', asy
   ]);
 
   for (const tool of tools) {
-    // The description is what the model reads to decide when to call a tool —
-    // an empty or throwaway one is a real defect, not a style nit.
+    // La descripción es lo que el modelo lee para decidir cuándo llamar a una
+    // tool: una vacía o puesta al pasar es un defecto real, no un detalle de estilo.
     assert.ok(
       (tool.description ?? '').length > 80,
       `${tool.name} needs a description that explains when to use it`
@@ -201,10 +201,11 @@ test('search_project_docs tells the agent to reindex instead of returning nothin
 test('search_project_docs refuses an index built with another embedding model', async () => {
   const harness = await connect();
 
-  // Planted directly in the store as a different model would have written it.
-  // The dimension count matches the fake provider's on purpose: only the
-  // recorded model can betray the mismatch, exactly the failure mode when
-  // REPO_RAG_EMBED_MODEL changes between two same-dimension models.
+  // Se planta directamente en el store tal como lo habría escrito otro modelo. La
+  // cantidad de dimensiones coincide con la del proveedor falso a propósito: lo
+  // único que puede delatar la discrepancia es el modelo registrado, que es
+  // exactamente el modo de falla cuando REPO_RAG_EMBED_MODEL cambia entre dos
+  // modelos de iguales dimensiones.
   harness.context.store.replaceBranch(
     'example-org/turnos',
     'main',
@@ -257,8 +258,8 @@ test('refresh_index then search_project_docs answers with a cited fragment', asy
   assert.ok(payload.results.length > 0);
   assert.equal(payload.results[0].path, 'README.md');
   assert.equal(payload.results[0].heading, 'Autenticacion');
-  // Every hit must say which branch it came from — a fragment on a feature
-  // branch is not the same claim as one on main.
+  // Todo resultado tiene que decir de qué rama vino: un fragmento en una feature
+  // branch no afirma lo mismo que uno en main.
   assert.ok(
     payload.results.every((hit: { branches?: string[] }) => Array.isArray(hit.branches))
   );
@@ -279,7 +280,7 @@ test('search_project_docs on an unindexed branch says which branches ARE indexed
 
   assert.equal(outcome.isError, true);
   assert.match(outcome.text, /Branch "no-existe"/);
-  // The fix here is not refresh_index, so the message must not send the agent there.
+  // Acá la solución no es refresh_index, así que el mensaje no debe mandar al agente para allá.
   assert.match(outcome.text, /Indexed branches: dev, main/);
 
   await harness.close();
@@ -289,9 +290,10 @@ test('search_project_docs on an unindexed branch without a repo lists indexed br
   const harness = await connect();
   await call(harness.client, 'refresh_index', { repo: 'turnos' });
 
-  // No `repo`: a naive check of totalChunks({ branch }) alone would see zero
-  // matches and blame an empty index, sending the agent to refresh_index for
-  // nothing — the index is populated, just not under this branch name.
+  // Sin `repo`: un chequeo ingenuo de totalChunks({ branch }) por sí solo vería
+  // cero coincidencias y le echaría la culpa a un índice vacío, mandando al agente
+  // a refresh_index en vano: el índice está poblado, solo que no bajo el nombre de
+  // esta rama.
   const outcome = await call(harness.client, 'search_project_docs', {
     query: 'como se autentican los vecinos',
     branch: 'no-existe'
@@ -372,7 +374,7 @@ test('list_branches reports every branch and whether it is indexed', async () =>
 
   const main = before.branches.find((branch: { name: string }) => branch.name === 'main');
   assert.equal(main.is_default, true);
-  // Nothing indexed yet, so every branch reports indexed:false.
+  // Todavía no hay nada indexado, así que toda rama reporta indexed:false.
   assert.ok(before.branches.every((branch: { indexed: boolean }) => branch.indexed === false));
 
   await call(harness.client, 'refresh_index', { repo: 'turnos' });
@@ -417,7 +419,7 @@ test('search_project_docs exposes how each result was matched', async () => {
     assert.ok(['both', 'semantic', 'keyword'].includes(hit.matched_by));
     assert.equal(typeof hit.semantic_score, 'number');
   }
-  // "SMS" is a literal term in the README, so the keyword half must fire.
+  // "SMS" es un término literal del README, así que la mitad por palabra clave tiene que dispararse.
   assert.ok(payload.results.some((hit: { matched_by: string }) => hit.matched_by === 'both'));
 
   await harness.close();

@@ -30,7 +30,7 @@ export const TURNOS_TRACKER = `# TRACKER
 - Reportes de asistencia por area.
 `;
 
-/** Two days ago: comfortably inside any sane activeBranchDays window. */
+/** Hace dos días: cómodamente dentro de cualquier ventana sensata de activeBranchDays. */
 export const RECENT_ISO = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
 
 export const FIXTURES: Record<string, MockRepoFixture> = {
@@ -72,7 +72,7 @@ export const FIXTURES: Record<string, MockRepoFixture> = {
           'TRACKER.md': '# TRACKER\n\n## En curso\n\n- Reportes de asistencia en replica.\n'
         }
       },
-      // Work in progress: its documentation exists ONLY here, never on main.
+      // Trabajo en curso: su documentación existe SOLO acá, nunca en main.
       'feat/pagos-online': {
         last_commit_date: RECENT_ISO,
         files: {
@@ -82,7 +82,7 @@ export const FIXTURES: Record<string, MockRepoFixture> = {
             'Integracion con la pasarela provincial.\n'
         }
       },
-      // A second recent branch, so the maxActiveBranches cap has something to cap.
+      // Una segunda rama reciente, para que el techo maxActiveBranches tenga algo que recortar.
       'feat/recordatorios': {
         last_commit_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
         files: { 'README.md': '# Recordatorios\n\nAviso previo al turno.\n' }
@@ -115,8 +115,8 @@ export interface TestConfigOptions {
   maxActiveBranches?: number;
   defaultBranches?: string[];
   /**
-   * Overrides the two default repos. Bounded-concurrency assertions need more
-   * repos in flight than the limit, which the fixed pair cannot provide.
+   * Pisa los dos repos por defecto. Las afirmaciones sobre concurrencia acotada
+   * necesitan más repos en vuelo que el límite, y el par fijo no puede darlos.
    */
   repos?: TestRepoEntry[];
 }
@@ -150,19 +150,20 @@ export function testGitHub(): MockGitHubClient {
 }
 
 /**
- * Deterministic stand-in for Ollama: a bag-of-words vector over a fixed
- * vocabulary. Crude, but it makes "the query word appears in the chunk" score
- * higher than "it does not", which is exactly the property the store is
- * supposed to preserve — and it needs no running model.
+ * Reemplazo determinista de Ollama: un vector de bolsa de palabras sobre un
+ * vocabulario fijo. Es tosco, pero hace que "la palabra de la consulta aparece en
+ * el chunk" puntúe más alto que "no aparece", que es exactamente la propiedad que
+ * el store debe preservar, y no necesita ningún modelo corriendo.
  */
 export class FakeEmbeddingProvider implements EmbeddingProvider {
   /**
-   * Every text this provider was actually asked to embed as a document, in
-   * order. The embedding cache is only observable from the outside as calls
-   * that DID NOT happen, so the tests need the provider to keep the receipts.
+   * Todos los textos que a este proveedor realmente se le pidió embeber como
+   * documento, en orden. Desde afuera el caché de embeddings solo se observa como
+   * llamadas que NO ocurrieron, así que los tests necesitan que el proveedor
+   * guarde los comprobantes.
    */
   readonly embedded: string[] = [];
-  /** Round trips, as opposed to texts — batching is part of what is asserted. */
+  /** Viajes de ida y vuelta, a diferencia de textos: el batching es parte de lo que se afirma. */
   documentCalls = 0;
 
   constructor(readonly model = 'fake-test-model') {}
@@ -204,7 +205,7 @@ export class FakeEmbeddingProvider implements EmbeddingProvider {
     const vector: number[] = FakeEmbeddingProvider.VOCAB.map(word =>
       lower.includes(word) ? 1 : 0
     );
-    // Keep it non-zero so normalisation always has a direction to work with.
+    // Se mantiene distinto de cero para que la normalización siempre tenga una dirección con la que trabajar.
     vector.push(0.01);
     return vector;
   }

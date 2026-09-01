@@ -5,12 +5,12 @@ import { EmbeddingsUnavailableError } from '../src/core/errors.js';
 import { OllamaEmbeddingProvider } from '../src/rag/embeddings.js';
 
 /**
- * The failure message is the whole point of these tests: when Ollama is not
- * running, the person reading the output must see something they can act on,
- * not a stack trace.
+ * El mensaje de falla es todo el sentido de estos tests: cuando Ollama no está
+ * corriendo, quien lea la salida tiene que ver algo sobre lo que pueda actuar, no
+ * un stack trace.
  */
 test('an unreachable Ollama explains how to start it', async () => {
-  // Port 1 is privileged and never listening: a deterministic connection refusal.
+  // El puerto 1 es privilegiado y nunca escucha: un rechazo de conexión determinista.
   const provider = new OllamaEmbeddingProvider({
     baseUrl: 'http://127.0.0.1:1',
     model: 'nomic-embed-text',
@@ -38,8 +38,8 @@ test('a missing model says which model to pull', async () => {
     timeoutMs: 2_000
   });
 
-  // A 404 on /api/embed means "old Ollama, use the legacy endpoint"; the legacy
-  // endpoint then reports the real problem.
+  // Un 404 en /api/embed significa "Ollama viejo, usá el endpoint anterior"; el
+  // endpoint anterior después reporta el problema real.
   await assert.rejects(
     () => provider.embedQuery('hola'),
     (error: unknown) =>
@@ -72,7 +72,7 @@ test('the batch endpoint is used when available: one call for many inputs', asyn
   const vectors = await provider.embedDocuments(['uno', 'dos', 'tres']);
 
   assert.equal(vectors.length, 3);
-  // One probe plus one batch call — never one call per document.
+  // Un tanteo más una llamada por lote: nunca una llamada por documento.
   assert.equal(calls, 2);
 
   await server.close();

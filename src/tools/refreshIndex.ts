@@ -26,8 +26,9 @@ export function registerRefreshIndex(server: McpServer, context: ServerContext):
           .optional()
           .describe('Repository alias to reindex. Omit to reindex every configured repo.')
       },
-      // Not read-only: it rewrites the local index. Still not destructive on
-      // GitHub, and safe to repeat — each run fully replaces the repo's chunks.
+      // No es de solo lectura: reescribe el índice local. Igual no es destructiva
+      // sobre GitHub, y es segura de repetir: cada corrida reemplaza por completo
+      // los chunks del repo.
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
     async ({ repo }) =>
@@ -47,9 +48,9 @@ export function registerRefreshIndex(server: McpServer, context: ServerContext):
             ),
             files: report.results.reduce((total, result) => total + result.files, 0),
             chunks: report.results.reduce((total, result) => total + result.chunks, 0),
-            // How much of the run the embedding cache absorbed. Worth showing:
-            // it is the difference between a refresh that takes minutes and one
-            // that takes seconds, and it explains a suspiciously fast run.
+            // Cuánto de la corrida absorbió el caché de embeddings. Vale la pena
+            // mostrarlo: es la diferencia entre un refresh que tarda minutos y uno
+            // que tarda segundos, y explica una corrida sospechosamente rápida.
             embedded_chunks: report.results.reduce(
               (total, result) => total + result.embedded_chunks,
               0

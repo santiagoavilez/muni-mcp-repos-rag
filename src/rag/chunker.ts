@@ -1,7 +1,7 @@
 export interface Chunk {
-  /** 0-based position of this chunk inside its file. */
+  /** Posición del chunk dentro de su archivo, empezando en 0. */
   index: number;
-  /** Nearest markdown heading above the chunk, kept so citations read well. */
+  /** Heading markdown más cercano por encima del chunk; se guarda para que las citas se lean bien. */
   heading: string;
   text: string;
 }
@@ -15,12 +15,12 @@ const DEFAULT_MAX_CHARS = 1_200;
 const DEFAULT_OVERLAP_CHARS = 150;
 
 /**
- * Splits a markdown document into retrievable chunks.
+ * Trocea un documento markdown en chunks recuperables.
  *
- * Sections are cut at headings first, because a heading is the strongest signal
- * of "one idea" that a README gives us. Sections longer than maxChars are then
- * split on paragraph boundaries with a small overlap, so a sentence straddling
- * the cut still appears whole in one of the two chunks.
+ * Primero se corta por headings, porque un heading es la señal más fuerte de
+ * "una idea" que da un README. Las secciones más largas que maxChars se parten
+ * después en límites de párrafo con un pequeño solapamiento, así una oración que
+ * queda a caballo del corte aparece entera en al menos uno de los dos chunks.
  */
 export function chunkMarkdown(source: string, options: ChunkOptions = {}): Chunk[] {
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
@@ -46,8 +46,8 @@ interface Section {
 }
 
 function normalize(source: string): string {
-  // Strip a leading BOM and fold non-breaking spaces, which GitHub-rendered
-  // markdown is full of and which would otherwise reach the embedding model.
+  // Saca el BOM inicial y normaliza los espacios duros, de los que el markdown
+  // renderizado por GitHub está lleno y que si no llegarían al modelo de embeddings.
   return source
     .replace(/^\uFEFF/, '')
     .replace(/\r\n/g, '\n')
@@ -68,14 +68,14 @@ function splitByHeading(source: string): Section[] {
   };
 
   for (const line of lines) {
-    // A "# " inside a fenced code block is code, not a heading.
+    // Un "# " dentro de un bloque de código cercado es código, no un heading.
     if (/^\s*(```|~~~)/.test(line)) insideFence = !insideFence;
 
     const match = insideFence ? null : /^(#{1,6})\s+(.*)$/.exec(line);
     if (match) {
       flush();
       heading = match[2]?.trim() ?? '';
-      // The heading stays in the body so its words are searchable too.
+      // El heading queda en el cuerpo para que sus palabras también sean buscables.
       buffer.push(line);
       continue;
     }
@@ -93,7 +93,7 @@ function splitLongText(body: string, maxChars: number, overlapChars: number): st
   const paragraphs = body.split(/\n{2,}/);
 
   let current = '';
-  /** Length of the leading overlap carried over from the previous piece. */
+  /** Largo del solapamiento inicial arrastrado desde el pedazo anterior. */
   let carried = 0;
 
   const flush = (): void => {
@@ -104,8 +104,8 @@ function splitLongText(body: string, maxChars: number, overlapChars: number): st
   };
 
   for (const paragraph of paragraphs) {
-    // A single paragraph bigger than the budget is cut on raw length; nothing
-    // smarter is available without a sentence tokenizer.
+    // Un párrafo solo más grande que el presupuesto se corta por largo crudo; no
+    // hay nada más inteligente disponible sin un tokenizador de oraciones.
     if (paragraph.length > maxChars) {
       flush();
       const stride = Math.max(1, maxChars - overlapChars);
@@ -121,8 +121,8 @@ function splitLongText(body: string, maxChars: number, overlapChars: number): st
     current = current === '' ? paragraph : `${current}\n\n${paragraph}`;
   }
 
-  // Only emit the tail when it holds something beyond the carried overlap;
-  // otherwise the last chunk would be a duplicate of the previous one's end.
+  // La cola se emite solo si tiene algo más allá del solapamiento arrastrado; si
+  // no, el último chunk sería un duplicado del final del anterior.
   if (current.length > carried) pieces.push(current);
 
   return pieces;

@@ -11,7 +11,7 @@ import { testConfig } from './fixtures.js';
 
 const TARGET = testConfig().all[0]!;
 
-/** The shape octokit's RequestError exposes, built from literals. */
+/** La forma que expone el RequestError de octokit, armada con literales. */
 function httpError(
   status: number,
   message = 'boom',
@@ -28,8 +28,8 @@ test('a 401 is a token problem, not a missing repo', () => {
 });
 
 test('a 403 with the quota at zero is a rate limit, carrying the reset time', () => {
-  // GitHub answers 403 both for "no permission" and "quota exhausted"; only
-  // the headers tell them apart, and the agent needs the right advice for each.
+  // GitHub contesta 403 tanto para "sin permiso" como para "cuota agotada"; solo
+  // los headers los distinguen, y el agente necesita el consejo correcto para cada uno.
   const resetEpochSeconds = 1_770_000_000;
   const error = translateGitHubError(
     httpError(403, 'API rate limit exceeded', {
@@ -73,9 +73,9 @@ test('a 409 means an empty repository, reported as not-found with the reason', (
 });
 
 test('an unmapped status becomes a fresh Error, never the raw octokit object', () => {
-  // The octokit error carries the whole request, headers included; whether the
-  // Authorization header is redacted there is the dependency's business, so it
-  // must not escape this function.
+  // El error de octokit lleva el request entero, headers incluidos; que el header
+  // Authorization esté censurado ahí es asunto de la dependencia, así que no puede
+  // escaparse de esta función.
   const original = httpError(500, 'Internal Server Error');
   const translated = translateGitHubError(original, TARGET);
 

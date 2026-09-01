@@ -5,41 +5,40 @@ import { selectStaleRepos } from './staleness.js';
 import { IndexStats } from './store.js';
 
 /**
- * The slice of the server context this needs, and nothing more. Narrowed on
- * purpose: it lets a test drive the scheduler with three literals instead of a
- * SQLite file, a GitHub token and a running Ollama.
+ * La porción del contexto del server que esto necesita, y nada más. Está
+ * acotada a propósito: permite que un test maneje el scheduler con tres
+ * literales en vez de un archivo SQLite, un token de GitHub y un Ollama andando.
  */
 export interface AutoIndexContext {
   config: { all: ConfiguredRepo[] };
   store: { stats(): IndexStats[] };
-  /** Staleness compares each run's model against the one configured now. */
+  /** El chequeo de vencimiento compara el modelo de cada corrida contra el configurado ahora. */
   embeddings: { model: string };
   indexer: { refresh(reference?: string): Promise<IndexReport> };
 }
 
 export interface StartupRefreshOptions {
-  /** Overrides REPO_RAG_AUTO_INDEX_HOURS. Mostly for tests. */
+  /** Pisa REPO_RAG_AUTO_INDEX_HOURS. Sobre todo para tests. */
   maxAgeHours?: number;
-  /** Overrides the wall clock. Mostly for tests. */
+  /** Pisa el reloj del sistema. Sobre todo para tests. */
   now?: Date;
 }
 
-/** Hours before the index is considered stale, when nothing says otherwise. */
+/** Horas antes de considerar vencido el índice, cuando nada indica otra cosa. */
 const DEFAULT_MAX_AGE_HOURS = 12;
 
 /**
- * Reindexes whatever went stale while the server was down.
+ * Reindexa todo lo que se venció mientras el server estaba caído.
  *
- * This exists because the index is a snapshot and not a mirror, which is the
- * single most confusing thing about this server for someone who did not build
- * it: they ask about a document that plainly exists on GitHub and are told the
- * docs do not cover it. Refreshing on startup removes the manual step instead
- * of documenting it.
+ * Existe porque el índice es una foto y no un espejo, que es la cosa más
+ * confusa de este server para quien no lo construyó: pregunta por un documento
+ * que está claramente en GitHub y se le contesta que la documentación no lo
+ * cubre. Refrescar al arrancar elimina el paso manual en vez de documentarlo.
  *
- * It NEVER throws. A startup routine that can fail takes the server with it,
- * and a server that answers from a stale index is enormously better than one
- * that does not start — so every failure is logged and swallowed, per repo and
- * as a whole.
+ * NUNCA lanza. Una rutina de arranque que puede fallar se lleva puesto al
+ * server, y un server que contesta desde un índice vencido es muchísimo mejor
+ * que uno que no arranca, así que toda falla se loguea y se traga, por repo y
+ * en conjunto.
  */
 export async function scheduleStartupRefresh(
   context: AutoIndexContext,
@@ -74,16 +73,16 @@ export async function scheduleStartupRefresh(
         'Refreshing in the background.'
     );
 
-    // Sequential on purpose. A Promise.all here would multiply the GitHub
-    // rate-limit pressure and the Ollama load by the repo count at the exact
-    // moment the agent is starting to ask questions, and there is nothing to
-    // gain: this runs in the background, so it is allowed to take its time.
+    // En secuencia a propósito. Un Promise.all acá multiplicaría por la cantidad
+    // de repos la presión sobre el rate limit de GitHub y la carga de Ollama,
+    // justo en el momento en que el agente empieza a preguntar, y no se gana
+    // nada: esto corre en segundo plano, así que puede tomarse su tiempo.
     for (const repo of stale) {
       await refreshOne(context, repo);
     }
   } catch (error) {
-    // Reaching here means something outside the per-repo loop broke (reading
-    // the stats, most likely). Still not worth failing a startup over.
+    // Llegar acá significa que se rompió algo fuera del bucle por repo (leer las
+    // estadísticas, lo más probable). Igual no vale la pena hacer fallar un arranque.
     console.error(`[auto-index] skipped: ${describe(error)}`);
   }
 }
@@ -94,11 +93,11 @@ async function refreshOne(context: AutoIndexContext, repo: ConfiguredRepo): Prom
     const total = (pick: (result: IndexReport['results'][number]) => number): number =>
       report.results.reduce((sum, result) => sum + pick(result), 0);
 
-    // Branch errors are counted too, not just repo errors. The likeliest
-    // failure at startup by far is Ollama not being up yet, and that surfaces
-    // per BRANCH: the repo itself succeeds, every branch fails, and the line
-    // below would otherwise read "0 files, 0 chunks" — an empty success. The
-    // reason has to appear here or nobody will look for it.
+    // También se cuentan los errores de rama, no solo los de repo. La falla más
+    // probable al arrancar es, por lejos, que Ollama todavía no esté levantado, y
+    // eso aparece por RAMA: el repo en sí sale bien, todas las ramas fallan, y la
+    // línea de abajo diría "0 files, 0 chunks", un éxito vacío. El motivo tiene
+    // que aparecer acá o nadie lo va a ir a buscar.
     const failedRepos = report.results.filter(result => result.error !== null);
     const branchErrors = report.results.flatMap(result =>
       result.branches.filter(branch => branch.error !== null)
@@ -106,9 +105,10 @@ async function refreshOne(context: AutoIndexContext, repo: ConfiguredRepo): Prom
     const reason =
       failedRepos[0]?.error ?? branchErrors[0]?.error ?? null;
 
-    // The embedded/reused split is the line worth reading: it is the difference
-    // between a refresh that took minutes and one that took seconds, and it is
-    // what explains a suspiciously fast run instead of making it suspicious.
+    // El desglose embebidos/reusados es lo que vale la pena leer: es la
+    // diferencia entre un refresh que tardó minutos y uno que tardó segundos, y
+    // es lo que explica una corrida sospechosamente rápida en vez de volverla
+    // sospechosa.
     console.error(
       `[auto-index] ${repo.alias}: ${total(result => result.files)} files, ` +
         `${total(result => result.chunks)} chunks, ` +
@@ -120,23 +120,23 @@ async function refreshOne(context: AutoIndexContext, repo: ConfiguredRepo): Prom
             `failure(s), first: ${reason}`)
     );
   } catch (error) {
-    // One repo down must not cost the others their refresh: an expired token
-    // or a rate limit would otherwise take the whole startup pass with it.
+    // Que un repo se caiga no puede costarle el refresh a los demás: si no, un
+    // token vencido o un rate limit se llevaría puesta toda la pasada de arranque.
     console.error(`[auto-index] ${repo.alias} failed: ${describe(error)}`);
   }
 }
 
 /**
- * Reads the staleness window from the environment.
+ * Lee del entorno la ventana de vencimiento.
  *
- * An unreadable value falls back to the default instead of disabling the
- * feature: a typo should not silently turn off the thing the variable exists to
- * configure, and the warning says which value was ignored.
+ * Un valor ilegible cae al default en vez de desactivar la funcionalidad: un
+ * error de tipeo no debería apagar en silencio justo aquello que la variable
+ * existe para configurar, y la advertencia dice qué valor se ignoró.
  */
 function readMaxAgeHours(): number {
   const raw = readEnv('REPO_RAG_AUTO_INDEX_HOURS', String(DEFAULT_MAX_AGE_HOURS));
-  // Number, not parseFloat: parseFloat("12abc") is 12, so a typo would pass
-  // silently and the warning below would never fire.
+  // Number, no parseFloat: parseFloat("12abc") da 12, así que un error de tipeo
+  // pasaría en silencio y la advertencia de abajo nunca se dispararía.
   const parsed = Number(raw);
 
   if (!Number.isFinite(parsed) || parsed < 0) {

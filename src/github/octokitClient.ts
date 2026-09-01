@@ -12,10 +12,10 @@ import {
   TreeEntry
 } from './types.js';
 
-/** Counting stops here — nobody needs an exact number past a hundred open PRs. */
+/** El conteo se corta acá: nadie necesita un número exacto más allá de cien PRs abiertos. */
 const COUNT_PAGE_SIZE = 100;
 
-/** Refuse to inline anything larger than this through get_file_content. */
+/** Se rechaza devolver por get_file_content cualquier cosa más grande que esto. */
 const MAX_FILE_BYTES = 400_000;
 
 export class OctokitGitHubClient implements GitHubClient {
@@ -45,7 +45,7 @@ export class OctokitGitHubClient implements GitHubClient {
   }
 
   async getProjectStatus(target: ConfiguredRepo): Promise<ProjectStatus> {
-    // One round trip each, in parallel: status is the tool called most often.
+    // Un viaje de ida y vuelta cada uno, en paralelo: status es la tool que más se llama.
     const [meta, commits, openPulls, openIssues] = await Promise.all([
       this.getRepoMeta(target),
       this.getRecentCommits(target, 1),
@@ -77,7 +77,7 @@ export class OctokitGitHubClient implements GitHubClient {
     return data.map(entry => ({
       sha: entry.sha,
       short_sha: entry.sha.slice(0, 7),
-      // commit.author is the git trailer and survives when the GitHub user is gone.
+      // commit.author es el trailer de git y sobrevive aunque el usuario de GitHub ya no exista.
       author: entry.commit.author?.name ?? entry.author?.login ?? 'unknown',
       date: entry.commit.author?.date ?? entry.commit.committer?.date ?? '',
       message: firstLine(entry.commit.message),
@@ -153,8 +153,8 @@ export class OctokitGitHubClient implements GitHubClient {
       `tree@${branch}`
     );
 
-    // A truncated tree still indexes the files it did return; the alternative is
-    // failing the whole refresh over a repo that is simply large.
+    // Un árbol truncado igual indexa los archivos que sí devolvió; la alternativa
+    // sería hacer fallar todo el refresh por un repo que simplemente es grande.
     if (data.truncated) {
       console.error(
         `[github] tree of ${target.fullName}@${branch} was truncated by the API; ` +
@@ -181,11 +181,11 @@ export class OctokitGitHubClient implements GitHubClient {
       })
     );
 
-    // listBranches gives no commit date, so each head is dated individually —
-    // one extra request per branch, and this runs on EVERY list_branches call,
-    // not just during a refresh. At most four in flight: GitHub's secondary
-    // rate limits trigger on concurrency, and a repo can carry up to
-    // COUNT_PAGE_SIZE branches.
+    // listBranches no devuelve la fecha del commit, así que cada cabecera se
+    // fecha por separado: un request extra por rama, y esto corre en CADA
+    // llamada a list_branches, no solo durante un refresh. Como máximo cuatro en
+    // vuelo: los rate limits secundarios de GitHub se disparan por concurrencia,
+    // y un repo puede tener hasta COUNT_PAGE_SIZE ramas.
     const summaries = await mapWithLimit(data, 4, async branch => {
       let date: string | null = null;
       try {
@@ -198,7 +198,7 @@ export class OctokitGitHubClient implements GitHubClient {
         );
         date = commit.commit.author?.date ?? commit.commit.committer?.date ?? null;
       } catch {
-        // An undatable branch simply sorts last; it must not fail the listing.
+        // Una rama sin fecha simplemente queda última; no debe hacer fallar el listado.
       }
 
       return {
@@ -235,11 +235,11 @@ export class OctokitGitHubClient implements GitHubClient {
         per_page: COUNT_PAGE_SIZE
       })
     );
-    // GitHub models pull requests as issues; only real issues are wanted here.
+    // GitHub modela los pull requests como issues; acá solo se quieren los issues reales.
     return data.filter(entry => entry.pull_request === undefined).length;
   }
 
-  /** Single funnel where every HTTP failure becomes a domain error. */
+  /** Embudo único donde toda falla HTTP se convierte en un error de dominio. */
   private async call<T>(
     target: ConfiguredRepo,
     request: () => Promise<T>,
@@ -259,9 +259,10 @@ function firstLine(message: string): string {
 }
 
 /**
- * Sort key for a branch's last commit date. Missing AND unparseable dates rank
- * as -Infinity: Date.parse of either is NaN, and NaN in a comparator leaves
- * the order arbitrary instead of putting undated branches last.
+ * Clave de orden para la fecha del último commit de una rama. Tanto las fechas
+ * ausentes COMO las ilegibles valen -Infinity: Date.parse devuelve NaN en ambos
+ * casos, y un NaN dentro de un comparador deja el orden arbitrario en vez de
+ * mandar al final las ramas sin fecha.
  */
 function commitDateRank(iso: string | null): number {
   if (iso === null) return Number.NEGATIVE_INFINITY;
@@ -334,17 +335,17 @@ export function translateGitHubError(
     );
   }
 
-  // Any other HTTP status becomes a fresh Error built from the status and
-  // message alone. Never propagate the raw octokit object: it carries the
-  // request, headers included, and their redaction is the dependency's
-  // guarantee, not ours.
+  // Cualquier otro status HTTP se convierte en un Error nuevo, armado solo con
+  // el status y el mensaje. Nunca se propaga el objeto crudo de octokit: lleva
+  // el request con headers incluidos, y que estén censurados es una garantía de
+  // la dependencia, no nuestra.
   if (typeof status === 'number') {
     return new Error(
       `GitHub answered ${status} while reading ${where}: ${shaped?.message ?? 'unknown error'}`
     );
   }
 
-  // No status means this never was an HTTP response (a network failure, a bug
-  // on our side); a plain Error has nothing to leak.
+  // Sin status esto nunca fue una respuesta HTTP (una falla de red, un bug
+  // nuestro); un Error pelado no tiene nada que filtrar.
   return error instanceof Error ? error : new Error(String(error));
 }

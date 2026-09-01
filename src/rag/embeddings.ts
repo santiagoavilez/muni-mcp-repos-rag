@@ -2,27 +2,27 @@ import { EmbeddingsUnavailableError } from '../core/errors.js';
 
 export interface EmbeddingProvider {
   readonly model: string;
-  /** Embeds documents being indexed. */
+  /** Embebe los documentos que se están indexando. */
   embedDocuments(texts: string[]): Promise<number[][]>;
-  /** Embeds a search query. Some models want a different prefix than documents. */
+  /** Embebe una consulta de búsqueda. Algunos modelos piden un prefijo distinto al de los documentos. */
   embedQuery(text: string): Promise<number[]>;
 }
 
 export interface OllamaOptions {
   baseUrl: string;
   model: string;
-  /** Per-request timeout. Embedding a cold model can genuinely take a while. */
+  /** Timeout por request. Embeber con un modelo en frío puede tardar de verdad. */
   timeoutMs?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
 /**
- * Embeddings from a local Ollama, over plain fetch — no SDK.
+ * Embeddings desde un Ollama local, con fetch pelado y sin SDK.
  *
- * Ollama moved from POST /api/embeddings (one prompt) to POST /api/embed
- * (batched). Which one exists depends on the installed version, so the first
- * call probes /api/embed and remembers the answer for the rest of the process.
+ * Ollama pasó de POST /api/embeddings (un prompt) a POST /api/embed (por lotes).
+ * Cuál de los dos existe depende de la versión instalada, así que la primera
+ * llamada tantea /api/embed y recuerda la respuesta para el resto del proceso.
  */
 export class OllamaEmbeddingProvider implements EmbeddingProvider {
   readonly model: string;
@@ -51,8 +51,8 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
   }
 
   /**
-   * nomic-embed-text is trained with task prefixes and loses accuracy without
-   * them. Other models are not, so they are left untouched.
+   * nomic-embed-text está entrenado con prefijos de tarea y pierde precisión sin
+   * ellos. Los demás modelos no, así que se dejan intactos.
    */
   private prefix(text: string, task: 'search_document' | 'search_query'): string {
     return /nomic/i.test(this.model) ? `${task}: ${text}` : text;
@@ -75,8 +75,8 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
       return vectors.map(vector => assertVector(vector, this.model));
     }
 
-    // Legacy endpoint takes one prompt per call; sequential keeps a laptop-sized
-    // Ollama from queueing dozens of parallel generations.
+    // El endpoint viejo toma un prompt por llamada; ir en secuencia evita que un
+    // Ollama de tamaño notebook encole decenas de generaciones en paralelo.
     const out: number[][] = [];
     for (const input of inputs) {
       const body = await this.post('/api/embeddings', { model: this.model, prompt: input });
@@ -155,8 +155,8 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 }
 
 function assertVector(vector: unknown, model: string): number[] {
-  // Number.isFinite, not typeof: a NaN component would be persisted as-is and
-  // every later search against it scores NaN, silently.
+  // Number.isFinite, no typeof: una componente NaN se persistiría tal cual y toda
+  // búsqueda posterior contra ella daría NaN, en silencio.
   if (!Array.isArray(vector) || vector.length === 0 || vector.some(v => !Number.isFinite(v))) {
     throw new EmbeddingsUnavailableError(
       `Ollama returned an unusable embedding for model "${model}".`

@@ -10,7 +10,7 @@ test('splits a document at its headings', () => {
     chunks.map(chunk => chunk.heading),
     ['Sistema de Turnos', 'Autenticacion', 'Notificaciones']
   );
-  // The heading stays inside the text so its words are searchable too.
+  // El heading queda dentro del texto para que sus palabras también sean buscables.
   assert.match(chunks[1]!.text, /## Autenticacion/);
   assert.match(chunks[1]!.text, /DNI/);
 });
@@ -41,7 +41,7 @@ test('a section longer than the budget is split with overlap and no empty tail',
     assert.ok(chunk.text.length > 0);
     assert.ok(chunk.text.length <= 400 + 50, `chunk too long: ${chunk.text.length}`);
   }
-  // The last chunk must carry real content, not just the previous overlap.
+  // El último chunk tiene que llevar contenido real, no solo el solapamiento anterior.
   const last = chunks.at(-1)!.text;
   assert.ok(last.length > 50, 'last chunk is only the carried overlap');
 });
