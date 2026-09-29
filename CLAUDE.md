@@ -57,7 +57,8 @@ src/
   scripts/reindex.ts    # indexador standalone (`pnpm reindex`)
   tools/                # una tool por archivo + shared.ts (ok/fail/guard)
 test/                   # node:test, sin red y sin Ollama
-repos.json              # repos trackeados (versionado: es config, no secreto)
+repos.example.json      # plantilla versionada de repos.json
+repos.json              # repos trackeados (NO versionado, en .gitignore: nombra repos internos)
 .env                    # token y endpoints (NUNCA se commitea)
 ```
 
@@ -81,7 +82,9 @@ pnpm inspect            # MCP Inspector contra dist/index.js
 
 ## Configuración
 
-**`repos.json`** (versionado) — qué repos se trackean y qué archivos se indexan:
+**`repos.json`** (obligatorio, **no versionado**: el repo es público y este archivo
+nombra repos internos; se parte de `repos.example.json`) — qué repos se trackean y
+qué archivos se indexan:
 
 ```json
 {

@@ -91,6 +91,7 @@ Requires Node 20+, pnpm and [Ollama](https://ollama.com) running locally.
 ```bash
 pnpm install                       # the first time
 cp .env.example .env               # and fill in GITHUB_TOKEN
+cp repos.example.json repos.json   # and list your own repos (required, see below)
 ollama pull bge-m3                 # the embedding model
 pnpm build
 pnpm reindex                       # first indexing run of all repos
@@ -140,3 +141,6 @@ The detail of when each one is triggered is in
 - The only thing that goes out to the internet is **read** queries to the GitHub
   API.
 - The `.env` with the token is **never** versioned (it's in `.gitignore`).
+- `repos.json` is **required** and is not versioned either: it names your internal
+  repos, so this public repo ships only the template `repos.example.json`. Copy it
+  to `repos.json` and replace the `REPLACE-ME` values; without it the server won't start.

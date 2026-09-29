@@ -133,7 +133,17 @@ upload this file**: `.gitignore` already excludes it.
 
 ### 4.2 The `repos.json` file
 
-This one is versioned: it has no secrets, it only says which repos to watch.
+**This file is required**: without it the server won't start. It is not versioned
+(it's in `.gitignore`) because it names your internal repos; the repo only ships the
+template `repos.example.json`. Copy it and edit it:
+
+```powershell
+copy repos.example.json repos.json
+notepad repos.json
+```
+
+Replace every `REPLACE-ME` value. If any are left, the server warns on stderr at
+startup. A filled-in example:
 
 ```json
 {

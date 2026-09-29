@@ -28,7 +28,7 @@ En v2 se agregó una novena tool, `compare_status`. Ver más abajo.
   compilación nativa en Windows; el volumen no lo justifica).
 - Embeddings locales con Ollama, sin SDK: `POST /api/embed` con fallback
   automático a `/api/embeddings` para versiones viejas.
-- `repos.json` versionado para la configuración; `.env` solo para el token.
+- `repos.json` para la configuración (ya no se versiona: solo `repos.example.json`); `.env` solo para el token.
 - Un repo que falla no aborta el resto, y una rama que falla no aborta las otras
   ramas del mismo repo: el error se reporta en el nivel donde ocurrió.
 - Indexado multi-rama por convención (`main` producción, `dev` réplica) más una

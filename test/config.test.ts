@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { join } from 'node:path';
 import { test } from 'node:test';
-import { matchesDocPattern } from '../src/config/repos.js';
+import { hasPlaceholders, loadReposConfig, matchesDocPattern } from '../src/config/repos.js';
 import { ValidationError } from '../src/core/errors.js';
 import { testConfig } from './fixtures.js';
 
@@ -52,4 +53,19 @@ test('"**" takes every markdown at any depth', () => {
   assert.equal(matchesDocPattern('README.md', '**'), true);
   assert.equal(matchesDocPattern('a/b/c/deep.md', '**'), true);
   assert.equal(matchesDocPattern('src/app.ts', '**'), false);
+});
+
+test('repos.example.json is a valid config and is flagged as still unedited', () => {
+  const config = loadReposConfig(join(import.meta.dirname, '..', 'repos.example.json'));
+
+  assert.ok(config.all.length >= 1);
+  assert.equal(hasPlaceholders(config), true);
+  assert.equal(hasPlaceholders(testConfig()), false);
+});
+
+test('a missing repos.json tells the user to copy the template', () => {
+  assert.throws(
+    () => loadReposConfig(join(import.meta.dirname, 'does-not-exist.json')),
+    /copy repos\.example\.json to repos\.json/
+  );
 });

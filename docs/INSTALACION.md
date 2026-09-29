@@ -133,7 +133,17 @@ compartas ni subas este archivo**: `.gitignore` ya lo excluye.
 
 ### 4.2 El archivo `repos.json`
 
-Este sí se versiona: no tiene secretos, solo dice qué repos mirar.
+**Es obligatorio**: sin este archivo el server no arranca. No se versiona (está en
+`.gitignore`) porque nombra tus repos internos; el repo solo trae la plantilla
+`repos.example.json`. Copiala y editala:
+
+```powershell
+copy repos.example.json repos.json
+notepad repos.json
+```
+
+Reemplazá todos los valores `REPLACE-ME`. Si quedan, el server avisa por stderr al
+arrancar. Ejemplo ya completo:
 
 ```json
 {

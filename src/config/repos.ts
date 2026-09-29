@@ -68,7 +68,8 @@ export interface ReposConfig {
   maxActiveBranches: number;
 }
 
-const PLACEHOLDER = /REEMPLAZAR/i;
+// Marca que deja repos.example.json; también acepta el viejo "REEMPLAZAR".
+const PLACEHOLDER = /REPLACE-ME|REEMPLAZAR/i;
 
 export function loadReposConfig(path: string = REPOS_CONFIG_PATH): ReposConfig {
   let raw: unknown;
@@ -76,7 +77,11 @@ export function loadReposConfig(path: string = REPOS_CONFIG_PATH): ReposConfig {
     raw = JSON.parse(readFileSync(path, 'utf8'));
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`Could not read repo config at ${path}: ${detail}`);
+    const hint =
+      (error as NodeJS.ErrnoException).code === 'ENOENT'
+        ? ' repos.json is not versioned: copy repos.example.json to repos.json and edit it.'
+        : '';
+    throw new Error(`Could not read repo config at ${path}: ${detail}.${hint}`);
   }
 
   const parsed = configSchema.safeParse(raw);

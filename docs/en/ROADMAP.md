@@ -27,7 +27,7 @@ v2 added a ninth tool, `compare_status`. See below.
   (avoids native compilation on Windows; the volume doesn't justify it).
 - Local embeddings with Ollama, no SDK: `POST /api/embed` with automatic fallback
   to `/api/embeddings` for old versions.
-- `repos.json` versioned for configuration; `.env` only for the token.
+- `repos.json` for configuration (no longer versioned: only `repos.example.json`); `.env` only for the token.
 - A repo that fails doesn't abort the rest, and a branch that fails doesn't abort
   the other branches of the same repo: the error is reported at the level where it
   occurred.

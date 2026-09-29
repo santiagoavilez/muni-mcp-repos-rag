@@ -90,6 +90,7 @@ Requiere Node 20+, pnpm y [Ollama](https://ollama.com) corriendo local.
 ```bash
 pnpm install                       # la primera vez
 cp .env.example .env               # y completá GITHUB_TOKEN
+cp repos.example.json repos.json   # y listá tus repos (obligatorio, ver abajo)
 ollama pull bge-m3                 # el modelo de embeddings
 pnpm build
 pnpm reindex                       # primer indexado de todos los repos
@@ -138,3 +139,6 @@ El detalle de cuándo se dispara cada una está en
 - El índice es un archivo local. No hay base de datos en la nube.
 - Lo único que sale a internet son consultas de **lectura** a la API de GitHub.
 - El `.env` con el token **nunca** se versiona (está en `.gitignore`).
+- `repos.json` es **obligatorio** y tampoco se versiona: nombra tus repos internos,
+  así que este repo público solo trae la plantilla `repos.example.json`. Copiala
+  como `repos.json` y reemplazá los valores `REPLACE-ME`; sin él el server no arranca.

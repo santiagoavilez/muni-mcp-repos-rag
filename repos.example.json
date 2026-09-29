@@ -1,0 +1,21 @@
+{
+  "$comment": "Plantilla de repos.json. Copiala como repos.json y reemplazá los valores REPLACE-ME. repos.json NO se versiona: nombra repos internos. El token vive en .env.",
+  "org": "REPLACE-ME-org",
+  "defaultDocs": [
+    "*.md",
+    "docs/**"
+  ],
+  "defaultBranches": [
+    "main",
+    "dev"
+  ],
+  "activeBranchDays": 30,
+  "maxActiveBranches": 5,
+  "repos": [
+    {
+      "alias": "my-project",
+      "repo": "REPLACE-ME-repo",
+      "description": "Short description of the project"
+    }
+  ]
+}

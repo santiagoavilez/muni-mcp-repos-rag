@@ -9,3 +9,6 @@ data/
 
 # Local tooling caches, not project content
 .atl/
+
+# Config real: nombra repos internos. La plantilla versionada es repos.example.json
+repos.json
