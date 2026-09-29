@@ -1,5 +1,7 @@
 # Conceptos: qué es cada cosa y por qué vale la pena
 
+🌐 [English](en/CONCEPTS.md) | **Español**
+
 Este documento está escrito para alguien que **no** tiene por qué saber qué es un
 embedding. No hay código acá. La idea es que al terminar de leerlo se entienda
 qué construimos, con qué piezas, y sobre todo **qué problema concreto resuelve**.

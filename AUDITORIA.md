@@ -1,5 +1,7 @@
 # Auditoría técnica — repo-rag-mcp
 
+🌐 [English](docs/en/AUDIT.md) | **Español**
+
 Auditoría completa del servidor previa a su presentación, cubriendo las siete
 categorías del encargo: (A) loops/reintentos/gasto externo, (B) bugs y manejo
 de errores, (C) seguridad, (D) mantenibilidad, (E) escalabilidad, (F) calidad

@@ -1,5 +1,7 @@
 # Roadmap
 
+🌐 [English](docs/en/ROADMAP.md) | **Español**
+
 ## v1 — actual
 
 Alcance cerrado: solo lectura, indexado on-demand multi-rama, configuración

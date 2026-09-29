@@ -1,5 +1,7 @@
 # Instalación (Windows + OpenCode)
 
+🌐 [English](en/INSTALLATION.md) | **Español**
+
 Guía paso a paso. Al final vas a poder preguntarle al agente por el estado de los
 repos de la organización sin salir del editor.
 

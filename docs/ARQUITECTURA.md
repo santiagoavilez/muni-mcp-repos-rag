@@ -1,5 +1,7 @@
 # Arquitectura
 
+🌐 [English](en/ARCHITECTURE.md) | **Español**
+
 Cómo está construido el servidor por dentro: qué pieza hace qué, cómo se
 comunican y por qué están separadas así.
 

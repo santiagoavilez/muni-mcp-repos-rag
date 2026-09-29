@@ -1,5 +1,7 @@
 # Cómo funciona
 
+🌐 [English](en/HOW_IT_WORKS.md) | **Español**
+
 Explicación de qué hace el servidor, cuándo usa cada herramienta y qué esperar de
 cada respuesta. No hace falta saber nada de embeddings para leer esto.
 
